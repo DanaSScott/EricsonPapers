@@ -1,0 +1,50 @@
+# EricsonPapers — build artifacts and editor/OS droppings.
+# Source .lean, .tex, .md and the checked-in .pdf renderings stay tracked.
+
+# --- Lean 4 / lake ---
+/.lake/
+lake-packages/
+build/
+*.olean
+*.olean.trace
+*.ilean
+*.trace
+*.hash
+
+# --- LaTeX intermediates (note: *.pdf is deliberately NOT ignored) ---
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+# *.log would also catch LaTeX logs; scoped to avoid swallowing run logs you keep
+*.latex.log
+
+# --- Editors ---
+*~
+\#*\#
+.\#*
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- macOS ---
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# --- Agent/session scratch ---
+.claude/settings.local.json
