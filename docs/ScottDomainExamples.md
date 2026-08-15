@@ -457,6 +457,20 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   A discrepancy found while formalizing §6.1: the prose says "six elements", but
   the structure it describes — ⊥, a, b, c, d — has five, and its own claim
   ↑a ∩ ↑b = {c, d} is the five-element reading. Formalized as five.
+- **§5.6 is proved as a general theorem**, though it is not one of §2's 16 rows:
+  `idealDomain : (P : TokenPoset) → DInfinityFoundations (TokenIdeal P)` takes any
+  countable poset of tokens with a least element and bounded joins to a witness.
+  That is this section's own claim — an ω-algebraic domain is nothing but the ideal
+  completion of a countable poset of finite approximations — and it is the pattern
+  §3.6–§3.8 each carried out by hand.
+
+  It is also **cheaper** than any of them, which is the measurement worth keeping:
+  `idealTop` is axiom-free outright and `ideal_common_extension` needs `lem` alone,
+  where the three concrete entries picked up `propext` and `Quot.sound` from the
+  list lemmas their finite approximations required. The reason is that an ideal is
+  directed, so any finite set of its tokens already lies below one of its members:
+  the finite approximation is a **single token**, and the bit masks, `pairDecode`
+  and `List.mem_append` all disappear. The basis is just `n ↦ ↑(enum n)`.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
