@@ -343,7 +343,8 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **6 of the 16 entries in §2 are formally verified**, all kernel-checked:
+- **9 of the 16 entries in §2 are settled**, all kernel-checked — seven inhabited
+  and two refuted:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -353,6 +354,9 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.4 | `vertNat : DInfinityFoundations (Option Nat)` | `Option Nat` | `[lem, propext, Quot.sound]` |
   | 3.5 | `fbcDomain : FinBCPoset D → DInfinityFoundations D` | any `D` | `[lem, propext, Quot.sound]` |
   | 3.6 | `psetNat : DInfinityFoundations (Nat → Prop)` | `Nat → Prop` | `[lem, propext, Quot.sound]` |
+  | 3.7 | `pfunNat : DInfinityFoundations PFun` | graphs, single-valued | `[lem, propext, Quot.sound]` |
+  | 6.1 | `six_no_lub`, `six_basisCap_fails` (refutations) | `Six` | `[propext]` |
+  | 6.2 | `nat_not_dcpo` (refutation) | `Nat` | `[propext, Quot.sound]` |
 
   §3.5 is the first entry proved as a **class** rather than an object: `fbcDomain`
   takes any finite bounded-complete pointed poset to a witness, so the row covers
@@ -418,9 +422,27 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   This also settles the *domain* half of §5.3: Pω is 𝒫(ℕ), so `psetNat` is its
   Scott-domain structure. The λ-model structure of §5.3 — application, abstraction,
   combinatory completeness — is **not** formalized, so §5.3's row stays open.
-- 0 non-examples are formalized. §6.1 is the cheapest next witness: a six-element
-  finite poset, decidable throughout, so a refutation of bounded completeness
-  should go through by `decide` with no classical axioms.
+  §3.7 forced an encoding decision that is worth recording. A partial function is
+  carried as its **graph plus a proof of single-valuedness**, not as
+  `Nat → Option Nat`. With `Option`, D2's generic point — the union of C's graphs
+  — would require *choosing* the value some member assigns at each argument, i.e.
+  countable choice. With the graph encoding the union is a relation defined
+  outright and single-valuedness is proved from the common-extension lemma, so
+  `lem` remains the only classical principle in the development. The basis needs
+  finite sets of *pairs*, supplied by `pairDecode`, a surjection ℕ ↠ ℕ × ℕ written
+  as the structurally recursive Cantor walk so that surjectivity needs only
+  ordinary induction rather than a closed form and its inverse.
+
+  The two non-examples are refutations rather than witnesses, and neither needs
+  `lem`: §6.1 decides by case analysis on a five-constructor type, §6.2 by `omega`.
+  §6.1 is the exact failure §4 predicts — `six_no_lub` is the order-theoretic form
+  (a and b are bounded by c and d with no least bound) and `six_basisCap_fails`
+  the topological one (↑a ∩ ↑b is not ↑k for any k), which is why `fbcDomain`
+  consumes bounded completeness at `basisCap` and nowhere else.
+
+  A discrepancy found while formalizing §6.1: the prose says "six elements", but
+  the structure it describes — ⊥, a, b, c, d — has five, and its own claim
+  ↑a ∩ ↑b = {c, d} is the five-element reading. Formalized as five.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
