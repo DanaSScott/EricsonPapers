@@ -555,9 +555,28 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   relation needs `h ▸ …`, and then transitivity, `bounded_lub` and `enum_onto` each
   have to compose transports and appeal to `Nat.add_assoc` as a propositional type
   equality. **The obstacle is that bookkeeping, not the mathematics.** The route
-  around it is a redesign, not a continuation: give the tower a level-indexed
-  inductive token type so one type carries all levels and cross-level comparison
-  becomes structural recursion instead of transport.
+  around it is a redesign, not a continuation.
+
+  **That redesign is now built, and the obstruction is gone.** Keep one **flat,
+  unindexed** token type `DTok`, and carry the level in the *order* instead:
+  `leAt : Nat → DTok → DTok → Prop`, the order of Dₙ, by recursion on n — level 0 is
+  𝕊's order, level n+1 is §5.1's entailment between step-function sets phrased over
+  `leAt n`. Comparing any two tokens at any level is then a `Prop` about two
+  ordinary terms: no indices, no casts. The other half of the trick is `stepOf`,
+  which reads *any* token as a finite set of step functions — ⊥ as the empty set
+  (λy.⊥), ⊤ through one embedding (λy.⊤) — so a single recursion handles levels
+  uniformly instead of by case analysis on which token is lower.
+
+  Proved on it, each `[propext]` and nothing more: `leAt_refl`, `leAt_trans`,
+  `leAt_bot_le`, and the one that matters — **`leAt_embTok`**, that e is an
+  *order-embedding*: `leAt (n+1) (embTok x) (embTok y) ↔ leAt n x y`. That is the
+  coherence the colimit runs on, and precisely the statement the indexed encoding
+  could not express without transport.
+
+  Still to do for D∞ itself: `depth`, iterated embedding, the stability lemma
+  "comparing at any level above both depths gives the same answer" (which is
+  `leAt_embTok` by induction), then `bounded_lub` and an enumeration in the style of
+  `treesUpTo`. All ordinary work in `Prop`.
 
   Note also that `D₀ = 𝕊` is a lattice, which is Scott's own 1972 setting; §2's row
   saying D∞ is not a lattice refers to starting from a non-lattice D₀.

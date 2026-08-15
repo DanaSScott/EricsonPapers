@@ -3043,3 +3043,117 @@ def powSelfApp (A : Nat → Prop) : Nat → Prop := powApp A A
 #print axioms cantor_injective   -- [propext, Quot.sound]
 #print axioms powApp_powGraph    -- [propext, Quot.sound]
 #print axioms powApp_continuous  -- does not depend on any axioms
+
+
+/- ----------------------------------------------------------------
+   §5.5 revisited — the flat encoding that unblocks the bilimit
+
+   The tower above stopped at the colimit for a type-theoretic reason,
+   not a mathematical one: tokens at levels n and m live in *different
+   types*, `tower (n+k₁)` and `tower (m+k₂)`, equal only propositionally,
+   so every law had to compose transports.
+
+   This is the redesign that removes it. Keep **one flat token type**,
+   with the level carried not by the type but by the *order*:
+
+       DTok            — one type, all levels
+       leAt : Nat → DTok → DTok → Prop
+
+   `leAt n` is the order of Dₙ, defined by recursion on n, so the
+   comparison of any two tokens at any level is a `Prop` about two
+   ordinary terms. No indices, no casts.
+
+   The other half of the trick is `stepOf`, which reads *any* token as
+   a finite set of step functions — a base token through one
+   application of e(x) = λy.x, with ⊥ read as the empty set, which is
+   λy.⊥. That is what lets a single recursion handle levels uniformly
+   rather than by case analysis on which token is "lower".
+   ---------------------------------------------------------------- -/
+
+inductive DTok where
+  | bot  : DTok
+  | top  : DTok
+  | step : List (DTok × DTok) → DTok
+
+def isTopTok : DTok → Bool
+  | .top => true
+  | _    => false
+
+/-- Any token read as a finite set of step functions: ⊥ as the empty set (λy.⊥),
+    ⊤ through one embedding (λy.⊤), a step set as itself. -/
+def stepOf : DTok → List (DTok × DTok)
+  | .bot    => []
+  | .top    => [(.bot, .top)]
+  | .step l => l
+
+/-- The order of Dₙ. At level 0 it is 𝕊's; at level n+1 it is §5.1's entailment
+    between step-function sets, phrased over `leAt n`. -/
+def leAt : Nat → DTok → DTok → Prop
+  | 0,     x, y => isTopTok x = true → isTopTok y = true
+  | n + 1, x, y =>
+      ∀ a b, (a, b) ∈ stepOf x →
+        ∀ v, (∀ a' b', (a', b') ∈ stepOf y → leAt n a' a → leAt n b' v) → leAt n b v
+
+theorem leAt_refl : ∀ (n : Nat) (x : DTok), leAt n x x := by
+  intro n
+  induction n with
+  | zero => intro x h; exact h
+  | succ n ih =>
+      intro x a b hab v hv
+      exact hv a b hab (ih a)
+
+theorem leAt_trans : ∀ (n : Nat) (x y z : DTok), leAt n x y → leAt n y z → leAt n x z := by
+  intro n
+  induction n with
+  | zero => intro x y z hxy hyz h; exact hyz (hxy h)
+  | succ n ih =>
+      intro x y z hxy hyz a b hab v hv
+      refine hxy a b hab v ?_
+      intro a' b' hmem ha'
+      refine hyz a' b' hmem v ?_
+      intro a'' b'' hmem'' ha''
+      exact hv a'' b'' hmem'' (ih a'' a' a ha'' ha')
+
+/-- The embedding e(x) = λy.x, in the flat encoding. -/
+def embTok (x : DTok) : DTok := .step [(.bot, x)]
+
+/-- **e is an order-embedding**: comparing at level n+1 after embedding is exactly
+    comparing at level n. This is the coherence the colimit runs on, and in the
+    indexed encoding it was the statement that could not be written without
+    transport. -/
+theorem leAt_embTok (n : Nat) (x y : DTok) :
+    leAt (n + 1) (embTok x) (embTok y) ↔ leAt n x y := by
+  constructor
+  · intro h
+    refine h .bot x (List.Mem.head _) y ?_
+    intro a' b' hmem ha'
+    cases hmem with
+    | head      => exact leAt_refl n y
+    | tail _ hh => cases hh
+  · intro h a b hab v hv
+    cases hab with
+    | head =>
+        refine leAt_trans n x y v h ?_
+        exact hv .bot y (List.Mem.head _) (leAt_refl n .bot)
+    | tail _ hh => cases hh
+
+/-- ⊥ is below everything at every level: at level 0 the implication is vacuous,
+    at level n+1 `stepOf ⊥` is empty. -/
+theorem leAt_bot_le : ∀ (n : Nat) (v : DTok), leAt n .bot v := by
+  intro n
+  cases n with
+  | zero   => intro v h; exact Bool.noConfusion h
+  | succ n => intro v a b hab; cases hab
+
+/- What remains for the bilimit, now that the obstruction is gone: a `depth`
+   function, iterated embedding, the stability lemma "comparing at any level above
+   both depths gives the same answer" (which is `leAt_embTok` by induction), and
+   then `bounded_lub` and an enumeration in the style of `treesUpTo`. All of it is
+   ordinary work in `Prop` — no transports — which is exactly what the indexed
+   encoding made impossible. -/
+
+-- Axiom audit for the flat encoding.
+#print axioms leAt_refl     -- [propext]
+#print axioms leAt_trans    -- [propext]
+#print axioms leAt_embTok   -- [propext]
+#print axioms leAt_bot_le   -- [propext]
