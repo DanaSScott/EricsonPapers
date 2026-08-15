@@ -343,9 +343,9 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **15 of the 16 entries in §2 are settled**, all kernel-checked — eleven inhabited
-  and four refuted. §5.1 carries stated scope limits; the one still open is §5.5's
-  bilimit:
+- **All 16 entries in §2 are settled**, all kernel-checked — twelve inhabited and
+  four refuted. §5.1 carries stated scope limits (its value side needs total joins,
+  and ideals are not identified with continuous maps); everything else is complete:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -362,6 +362,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 5.4 | `treeDomain : TreeSig → DInfinityFoundations …` | ideals of finite terms | `[lem, propext, Quot.sound]` |
   | 6.1 | `six_no_lub`, `six_basisCap_fails` (refutations) | `Six` | `[propext]` |
   | 6.2 | `nat_not_dcpo` (refutation) | `Nat` | `[propext, Quot.sound]` |
+  | 5.5 | `dInfinity : DInfinityFoundations (TokenIdeal dInfTokens)` | levelled tokens | `[lem, propext, Quot.sound]` |
   | 6.3 | `compact_iff_eq_bot` (refutation) | `Ival` | `[propext, Classical.choice, Quot.sound]` |
   | 6.4 | `ui_compact_iff` (refutation) | `UI` | `[propext, Classical.choice, Quot.sound]` |
 
@@ -573,10 +574,28 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   coherence the colimit runs on, and precisely the statement the indexed encoding
   could not express without transport.
 
-  Still to do for D∞ itself: `depth`, iterated embedding, the stability lemma
-  "comparing at any level above both depths gives the same answer" (which is
-  `leAt_embTok` by induction), then `bounded_lub` and an enumeration in the style of
-  `treesUpTo`. All ordinary work in `Prop`.
+  **D∞ is now built**: `dInfinity : DInfinityFoundations (TokenIdeal dInfTokens)`.
+  A token is a pair `(n, x) : Nat × DTok` — a *declared level* and a token —
+  compared after lifting both to the max of the declared levels (`cmpTok`), with
+  `cmpTok_up`/`cmpTok_eq` showing any admissible comparison level gives the same
+  answer. Nothing forces x to be well formed at level n and nothing needs to: a
+  token declared too low is read through `isTopTok` and so is order-equivalent to ⊥,
+  and extra copies of ⊥ change no ideal. That is what lets the carrier be a plain
+  product rather than a subtype.
+
+  Joins are total — inherited from D₀ = 𝕊 being a lattice — and are concatenation of
+  step-sets; `joinLift` carries that through lifting by induction on the number of
+  lifts, with the comparison level dropping alongside. Countability is `dtoksUpTo`,
+  proved covering by a **mutual** recursion over `DTok` and its list, which is what
+  the nested inductive calls for.
+
+  `dInfinity` consumes exactly what every other witness does —
+  `[lem, propext, Quot.sound]` — and in particular **no `Classical.choice`**. That
+  took a measurement to secure: an earlier `dLe_lub` closed an impossible branch
+  with a bare `omega` whose *goal was not arithmetic*, and omega discharges such a
+  goal through `Classical.byContradiction`. It would have been the development's
+  first use of choice outside the ℝ module. `absurd hN (by omega)` — omega proving
+  the arithmetic fact, `absurd` doing the eliminating — removes it.
 
   Note also that `D₀ = 𝕊` is a lattice, which is Scott's own 1972 setting; §2's row
   saying D∞ is not a lattice refers to starting from a non-lattice D₀.

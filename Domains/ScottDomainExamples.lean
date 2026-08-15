@@ -3145,15 +3145,373 @@ theorem leAt_bot_le : ∀ (n : Nat) (v : DTok), leAt n .bot v := by
   | zero   => intro v h; exact Bool.noConfusion h
   | succ n => intro v a b hab; cases hab
 
-/- What remains for the bilimit, now that the obstruction is gone: a `depth`
-   function, iterated embedding, the stability lemma "comparing at any level above
-   both depths gives the same answer" (which is `leAt_embTok` by induction), and
-   then `bounded_lub` and an enumeration in the style of `treesUpTo`. All of it is
-   ordinary work in `Prop` — no transports — which is exactly what the indexed
-   encoding made impossible. -/
+/- ----------------------------------------------------------------
+   D∞ itself.
 
--- Axiom audit for the flat encoding.
+   A token is a pair `(n, x) : Nat × DTok` — a **declared level** and a
+   token — compared after lifting both to the max of the declared
+   levels. No subtype and no dependent type, so every law is ordinary
+   `Prop` work.
+
+   Nothing forces `x` to be well formed at level n. It need not: a
+   token declared too low is compared at that low level, where `leAt`
+   reads it through `isTopTok`, making it order-equivalent to ⊥. Extra
+   copies of ⊥ change no ideal, so the completion is unaffected — and
+   this is what lets the carrier be a plain product.
+   ---------------------------------------------------------------- -/
+
+def embIter : Nat → DTok → DTok
+  | 0,     x => x
+  | k + 1, x => embTok (embIter k x)
+
+theorem embIter_add : ∀ (a b : Nat) (x : DTok),
+    embIter (a + b) x = embIter a (embIter b x) := by
+  intro a
+  induction a with
+  | zero =>
+      intro b x
+      show embIter (0 + b) x = embIter b x
+      rw [Nat.zero_add]
+  | succ a ih =>
+      intro b x
+      rw [Nat.succ_add]
+      show embTok (embIter (a + b) x) = embTok (embIter a (embIter b x))
+      rw [ih b x]
+
+theorem leAt_embIter_bot : ∀ (N k : Nat) (v : DTok), leAt N (embIter k .bot) v := by
+  intro N
+  induction N with
+  | zero =>
+      intro k v h
+      cases k with
+      | zero   => exact Bool.noConfusion h
+      | succ _ => exact Bool.noConfusion h
+  | succ N ih =>
+      intro k v a b hab
+      cases k with
+      | zero => cases hab
+      | succ k =>
+          cases hab with
+          | head =>
+              intro w _
+              exact ih k w
+          | tail _ hh => cases hh
+
+/-- Comparison of two tokens at a level above both declared levels. -/
+def cmpTok (N n m : Nat) (x y : DTok) : Prop :=
+  leAt N (embIter (N - n) x) (embIter (N - m) y)
+
+/-- **Stability**: raising the comparison level by one changes nothing. This is
+    `leAt_embTok` with the arithmetic that the extra lift is exactly one more
+    embedding on each side. -/
+theorem cmpTok_up (N n m : Nat) (x y : DTok) (hn : n ≤ N) (hm : m ≤ N) :
+    cmpTok N n m x y ↔ cmpTok (N + 1) n m x y := by
+  have h1 : N + 1 - n = (N - n) + 1 := by omega
+  have h2 : N + 1 - m = (N - m) + 1 := by omega
+  show leAt N (embIter (N - n) x) (embIter (N - m) y) ↔
+       leAt (N + 1) (embIter (N + 1 - n) x) (embIter (N + 1 - m) y)
+  rw [h1, h2]
+  exact (leAt_embTok N _ _).symm
+
+theorem cmpTok_add (n m : Nat) (x y : DTok) :
+    ∀ (d N : Nat), n ≤ N → m ≤ N → (cmpTok N n m x y ↔ cmpTok (N + d) n m x y) := by
+  intro d
+  induction d with
+  | zero => intro N _ _; exact Iff.rfl
+  | succ d ih =>
+      intro N hn hm
+      refine (ih N hn hm).trans ?_
+      have : N + (d + 1) = (N + d) + 1 := by omega
+      rw [this]
+      exact cmpTok_up (N + d) n m x y (by omega) (by omega)
+
+/-- Any two admissible comparison levels agree. -/
+theorem cmpTok_eq (n m : Nat) (x y : DTok) (N M : Nat)
+    (hnN : n ≤ N) (hmN : m ≤ N) (hnM : n ≤ M) (hmM : m ≤ M) :
+    cmpTok N n m x y ↔ cmpTok M n m x y := by
+  rcases Nat.le_total N M with h | h
+  · have : M = N + (M - N) := by omega
+    rw [this]
+    exact cmpTok_add n m x y (M - N) N hnN hmN
+  · have : N = M + (N - M) := by omega
+    rw [this]
+    exact (cmpTok_add n m x y (N - M) M hnM hmM).symm
+
+/-- The order on D∞ tokens. -/
+def dLe (p q : Nat × DTok) : Prop := cmpTok (max p.1 q.1) p.1 q.1 p.2 q.2
+
+theorem dLe_refl (p : Nat × DTok) : dLe p p := by
+  show leAt (max p.1 p.1) (embIter (max p.1 p.1 - p.1) p.2) (embIter (max p.1 p.1 - p.1) p.2)
+  exact leAt_refl _ _
+
+theorem dLe_trans (p q r : Nat × DTok) (hpq : dLe p q) (hqr : dLe q r) : dLe p r := by
+  have h1 : cmpTok (max (max p.1 q.1) (max q.1 r.1)) p.1 q.1 p.2 q.2 :=
+    (cmpTok_eq p.1 q.1 p.2 q.2 (max p.1 q.1) _ (by omega) (by omega)
+      (by omega) (by omega)).mp hpq
+  have h2 : cmpTok (max (max p.1 q.1) (max q.1 r.1)) q.1 r.1 q.2 r.2 :=
+    (cmpTok_eq q.1 r.1 q.2 r.2 (max q.1 r.1) _ (by omega) (by omega)
+      (by omega) (by omega)).mp hqr
+  have h3 : cmpTok (max (max p.1 q.1) (max q.1 r.1)) p.1 r.1 p.2 r.2 :=
+    leAt_trans _ _ _ _ h1 h2
+  exact (cmpTok_eq p.1 r.1 p.2 r.2 _ (max p.1 r.1) (by omega) (by omega)
+    (by omega) (by omega)).mp h3
+
+theorem dLe_bot (p : Nat × DTok) : dLe (0, DTok.bot) p := by
+  show leAt (max 0 p.1) (embIter (max 0 p.1 - 0) DTok.bot) (embIter (max 0 p.1 - p.1) p.2)
+  exact leAt_embIter_bot _ _ _
+
+/-- The join is concatenation of step-sets, and it survives lifting: the induction
+    is on the number of lifts, with the comparison level dropping alongside. -/
+theorem joinLift : ∀ (k L : Nat) (x y z : DTok),
+    leAt L (embIter k x) z → leAt L (embIter k y) z →
+    leAt L (embIter k (.step (stepOf x ++ stepOf y))) z := by
+  intro k
+  induction k with
+  | zero =>
+      intro L x y z hx hy
+      cases L with
+      | zero => intro h; exact Bool.noConfusion h
+      | succ L =>
+          intro a b hab v hv
+          rcases List.mem_append.mp hab with h | h
+          · exact hx a b h v hv
+          · exact hy a b h v hv
+  | succ k ih =>
+      intro L x y z hx hy
+      cases L with
+      | zero => intro h; exact Bool.noConfusion h
+      | succ L =>
+          intro a b hab v hv
+          cases hab with
+          | head =>
+              refine ih L x y v ?_ ?_
+              · exact hx .bot (embIter k x) (List.Mem.head _) v hv
+              · exact hy .bot (embIter k y) (List.Mem.head _) v hv
+          | tail _ hh => cases hh
+
+/-- Every pair of tokens has a least upper bound, so D∞'s tokens have total joins —
+    inherited from `D₀ = 𝕊` being a lattice. -/
+theorem dLe_lub (p q : Nat × DTok) :
+    ∃ u, dLe p u ∧ dLe q u ∧ ∀ w, dLe p w → dLe q w → dLe u w := by
+  rcases Nat.eq_zero_or_pos (max p.1 q.1) with hN | hN
+  · -- both declared at level 0: `leAt 0` reads them through `isTopTok`
+    have hp1 : p.1 = 0 := by omega
+    have hq1 : q.1 = 0 := by omega
+    cases hp : isTopTok p.2 with
+    | true =>
+        refine ⟨p, dLe_refl p, ?_, fun w hw _ => hw⟩
+        show leAt (max q.1 p.1) (embIter (max q.1 p.1 - q.1) q.2)
+               (embIter (max q.1 p.1 - p.1) p.2)
+        rw [hp1, hq1]
+        show leAt 0 q.2 p.2
+        intro _
+        exact hp
+    | false =>
+        refine ⟨q, ?_, dLe_refl q, fun w _ hw => hw⟩
+        show leAt (max p.1 q.1) (embIter (max p.1 q.1 - p.1) p.2)
+               (embIter (max p.1 q.1 - q.1) q.2)
+        rw [hp1, hq1]
+        show leAt 0 p.2 q.2
+        intro h
+        rw [hp] at h
+        exact Bool.noConfusion h
+  · -- at a positive level the join is the concatenation of the step-sets
+    refine ⟨(max p.1 q.1,
+             .step (stepOf (embIter (max p.1 q.1 - p.1) p.2) ++
+                    stepOf (embIter (max p.1 q.1 - q.1) q.2))), ?_, ?_, ?_⟩
+    · show leAt (max p.1 (max p.1 q.1))
+             (embIter (max p.1 (max p.1 q.1) - p.1) p.2)
+             (embIter (max p.1 (max p.1 q.1) - max p.1 q.1) _)
+      have he : max p.1 (max p.1 q.1) = max p.1 q.1 := by omega
+      rw [he]
+      have hz : max p.1 q.1 - max p.1 q.1 = 0 := by omega
+      rw [hz]
+      cases hK : max p.1 q.1 with
+      | zero => exact absurd hN (by omega)
+      | succ K =>
+          intro a b hab v hv
+          exact hv a b (List.mem_append.mpr (Or.inl hab)) (leAt_refl K a)
+    · show leAt (max q.1 (max p.1 q.1))
+             (embIter (max q.1 (max p.1 q.1) - q.1) q.2)
+             (embIter (max q.1 (max p.1 q.1) - max p.1 q.1) _)
+      have he : max q.1 (max p.1 q.1) = max p.1 q.1 := by omega
+      rw [he]
+      have hz : max p.1 q.1 - max p.1 q.1 = 0 := by omega
+      rw [hz]
+      cases hK : max p.1 q.1 with
+      | zero => exact absurd hN (by omega)
+      | succ K =>
+          intro a b hab v hv
+          exact hv a b (List.mem_append.mpr (Or.inr hab)) (leAt_refl K a)
+    · intro w hpw hqw
+      have hL1 : cmpTok (max (max p.1 q.1) w.1) p.1 w.1 p.2 w.2 :=
+        (cmpTok_eq p.1 w.1 p.2 w.2 (max p.1 w.1) _ (by omega) (by omega)
+          (by omega) (by omega)).mp hpw
+      have hL2 : cmpTok (max (max p.1 q.1) w.1) q.1 w.1 q.2 w.2 :=
+        (cmpTok_eq q.1 w.1 q.2 w.2 (max q.1 w.1) _ (by omega) (by omega)
+          (by omega) (by omega)).mp hqw
+      have hsplit1 : max (max p.1 q.1) w.1 - p.1
+          = (max (max p.1 q.1) w.1 - max p.1 q.1) + (max p.1 q.1 - p.1) := by omega
+      have hsplit2 : max (max p.1 q.1) w.1 - q.1
+          = (max (max p.1 q.1) w.1 - max p.1 q.1) + (max p.1 q.1 - q.1) := by omega
+      rw [cmpTok, hsplit1, embIter_add] at hL1
+      rw [cmpTok, hsplit2, embIter_add] at hL2
+      show leAt (max (max p.1 q.1) w.1)
+             (embIter (max (max p.1 q.1) w.1 - max p.1 q.1) _)
+             (embIter (max (max p.1 q.1) w.1 - w.1) w.2)
+      exact joinLift _ _ _ _ _ hL1 hL2
+
+/- Countability. `dtoksUpTo n` holds every token of height ≤ n whose step-sets have
+   length ≤ n over tokens already listed; `listsUpTo` is the list-of-length-≤-k
+   construction it needs. The covering proof is a **mutual** recursion over `DTok`
+   and its list, which is what the nested inductive calls for. -/
+
+def listsUpTo {α : Type} (xs : List α) : Nat → List (List α)
+  | 0     => [[]]
+  | k + 1 => listsUpTo xs k ++ xs.flatMap (fun a => (listsUpTo xs k).map (fun l => a :: l))
+
+theorem nil_mem_listsUpTo {α : Type} (xs : List α) :
+    ∀ k, [] ∈ listsUpTo xs k := by
+  intro k
+  induction k with
+  | zero   => exact List.Mem.head _
+  | succ k ih => exact List.mem_append.mpr (Or.inl ih)
+
+theorem mem_listsUpTo {α : Type} (xs : List α) :
+    ∀ (k : Nat) (l : List α), l.length ≤ k → (∀ a, a ∈ l → a ∈ xs) → l ∈ listsUpTo xs k := by
+  intro k
+  induction k with
+  | zero =>
+      intro l hlen _
+      cases l with
+      | nil       => exact List.Mem.head _
+      | cons _ _  => exact absurd hlen (by simp)
+  | succ k ih =>
+      intro l hlen hmem
+      cases l with
+      | nil => exact nil_mem_listsUpTo xs (k + 1)
+      | cons a t =>
+          refine List.mem_append.mpr (Or.inr ?_)
+          refine List.mem_flatMap.mpr ⟨a, hmem a (List.Mem.head _), ?_⟩
+          refine List.mem_map.mpr ⟨t, ih t (by simp at hlen; omega) ?_, rfl⟩
+          intro b hb
+          exact hmem b (List.Mem.tail _ hb)
+
+def dtokPairs (prev : List DTok) : List (DTok × DTok) :=
+  prev.flatMap (fun a => prev.map (fun b => (a, b)))
+
+def dtoksUpTo : Nat → List DTok
+  | 0     => [DTok.bot, DTok.top]
+  | n + 1 => dtoksUpTo n ++ (listsUpTo (dtokPairs (dtoksUpTo n)) (n + 1)).map DTok.step
+
+theorem dtoksUpTo_mono : ∀ (n m : Nat) (x : DTok),
+    n ≤ m → x ∈ dtoksUpTo n → x ∈ dtoksUpTo m := by
+  intro n m
+  induction m with
+  | zero => intro x h hx; have : n = 0 := by omega
+            subst this; exact hx
+  | succ m ih =>
+      intro x h hx
+      rcases Nat.lt_or_ge n (m + 1) with hlt | hge
+      · exact List.mem_append.mpr (Or.inl (ih x (by omega) hx))
+      · have : n = m + 1 := by omega
+        subst this
+        exact hx
+
+mutual
+
+theorem dtoksUpTo_covers : ∀ x : DTok, ∃ n, x ∈ dtoksUpTo n
+  | .bot    => ⟨0, List.Mem.head _⟩
+  | .top    => ⟨0, List.Mem.tail _ (List.Mem.head _)⟩
+  | .step l => by
+      obtain ⟨n, hpairs, hlen⟩ := dtoksUpTo_covers_list l
+      refine ⟨n + 1, List.mem_append.mpr (Or.inr (List.mem_map.mpr ⟨l, ?_, rfl⟩))⟩
+      refine mem_listsUpTo _ (n + 1) l (by omega) ?_
+      intro p hp
+      obtain ⟨h1, h2⟩ := hpairs p hp
+      exact List.mem_flatMap.mpr ⟨p.1, h1, List.mem_map.mpr ⟨p.2, h2, rfl⟩⟩
+
+theorem dtoksUpTo_covers_list : ∀ l : List (DTok × DTok),
+    ∃ n, (∀ p, p ∈ l → p.1 ∈ dtoksUpTo n ∧ p.2 ∈ dtoksUpTo n) ∧ l.length ≤ n
+  | []     => ⟨0, (by intro p hp; cases hp), by simp⟩
+  | p :: t => by
+      obtain ⟨n1, h1⟩ := dtoksUpTo_covers p.1
+      obtain ⟨n2, h2⟩ := dtoksUpTo_covers p.2
+      obtain ⟨n3, h3, h4⟩ := dtoksUpTo_covers_list t
+      refine ⟨max (max n1 n2) (n3 + 1), ?_, ?_⟩
+      · intro q hq
+        cases hq with
+        | head =>
+            exact ⟨dtoksUpTo_mono n1 _ p.1 (by omega) h1,
+                   dtoksUpTo_mono n2 _ p.2 (by omega) h2⟩
+        | tail _ hq' =>
+            obtain ⟨g1, g2⟩ := h3 q hq'
+            exact ⟨dtoksUpTo_mono n3 _ q.1 (by omega) g1,
+                   dtoksUpTo_mono n3 _ q.2 (by omega) g2⟩
+      · simp only [List.length_cons]
+        omega
+
+end
+
+/-- The enumeration: k codes a level, a height bound, and an index into the tokens
+    of that height. -/
+def dInfEnum (k : Nat) : Nat × DTok :=
+  ((pairDecode k).1,
+   (dtoksUpTo (pairDecode (pairDecode k).2).1).getD (pairDecode (pairDecode k).2).2 DTok.bot)
+
+/-- D∞'s tokens: a declared level and a token, ordered by comparison at the max of
+    the declared levels. -/
+def dInfTokens : TokenPoset where
+  T           := Nat × DTok
+  le          := dLe
+  le_refl     := dLe_refl
+  le_trans    := dLe_trans
+  bot         := (0, DTok.bot)
+  bot_le      := dLe_bot
+  enum        := dInfEnum
+  bounded_lub := fun a b _ => dLe_lub a b
+  enum_onto   := by
+    intro a
+    obtain ⟨n, hn⟩ := dtoksUpTo_covers a.2
+    obtain ⟨i, hi, hget⟩ := List.mem_iff_getElem.mp hn
+    obtain ⟨rest, hrest⟩ := pairDecode_hits (n + i) i n rfl
+    obtain ⟨k, hk⟩ := pairDecode_hits (a.1 + rest) rest a.1 rfl
+    have heq : dInfEnum k = a := by
+      show ((pairDecode k).1,
+        (dtoksUpTo (pairDecode (pairDecode k).2).1).getD
+          (pairDecode (pairDecode k).2).2 DTok.bot) = a
+      rw [hk]
+      show (a.1, (dtoksUpTo (pairDecode rest).1).getD (pairDecode rest).2 DTok.bot) = a
+      rw [hrest]
+      show (a.1, (dtoksUpTo n).getD i DTok.bot) = a
+      rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi, hget]
+      rfl
+    refine ⟨k, ?_, ?_⟩
+    · rw [show dInfEnum k = a from heq]
+      exact dLe_refl a
+    · rw [show dInfEnum k = a from heq]
+      exact dLe_refl a
+
+/-- **D∞**, at last: the ideal completion of the tokens of the tower
+    `D₀ = 𝕊`, `Dₙ₊₁ = [Dₙ → Dₙ]`, satisfying D1–D4. -/
+def dInfinity : DInfinityFoundations (TokenIdeal dInfTokens) := idealDomain dInfTokens
+
+/- Axiom audit for the flat encoding and the bilimit. `dInfinity` consumes exactly
+   what every other witness here does — `[lem, propext, Quot.sound]`, the `lem`
+   entering through `idealDomain`'s D2 — and in particular **no `Classical.choice`**.
+
+   That last point took a measurement to secure. An earlier version of `dLe_lub`
+   discharged an impossible branch with a bare `omega` whose *goal was not
+   arithmetic*; omega closes such a goal through `Classical.byContradiction`, which
+   pulled choice into D∞ and from there into nothing else — but it would have been
+   the development's first use. Replacing it with `absurd hN (by omega)`, where
+   omega proves the arithmetic fact and `absurd` does the eliminating, removes it. -/
 #print axioms leAt_refl     -- [propext]
 #print axioms leAt_trans    -- [propext]
 #print axioms leAt_embTok   -- [propext]
 #print axioms leAt_bot_le   -- [propext]
+#print axioms joinLift      -- [propext]
+#print axioms dLe_lub       -- [propext, Quot.sound]
+#print axioms dtoksUpTo_covers -- [propext, Quot.sound]
+#print axioms dInfTokens    -- [propext, Quot.sound]
+#print axioms dInfinity     -- [lem, propext, Quot.sound]
