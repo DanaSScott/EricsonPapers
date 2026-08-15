@@ -330,11 +330,23 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 
 ## 8. Formalization status
 
-Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) as of this writing:
+Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
+[ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **1 of the 16 entries in §2 is formally verified** — §3.2/§4, Sierpiński, as
-  `sierp : DInfinityFoundations Bool`, kernel-checked, depending on
-  `[lem, propext, Quot.sound]`.
+- **2 of the 16 entries in §2 are formally verified**, both kernel-checked:
+
+  | § | witness | carrier | axioms consumed |
+  |---|---------|---------|-----------------|
+  | 3.2/4 | `sierp : DInfinityFoundations Bool` | `Bool` | `[lem, propext, Quot.sound]` |
+  | 3.1 | `onePoint : DInfinityFoundations Unit` | `Unit` | `[propext, Quot.sound]` |
+
+  The difference in the third column is the point of the pair. `lem` enters
+  `sierp` only through D2, to case split on `C ⊤`; 𝟙 has no second point to split
+  on, so its sobriety proof is constructive and `lem` drops out. What remains in
+  both is `propext` with `Quot.sound` (the latter via `funext`), from the closure
+  equation `C = clSingleton ⊥` being an equality of predicates. Every obligation
+  for 𝟙 is discharged by definitional eta for structures — each `x : Unit` *is*
+  `()` — so `t0` closes by `rfl` where the `Bool` witness needed a case split.
 - 0 non-examples are formalized. §6.1 is the cheapest next witness: a six-element
   finite poset, decidable throughout, so a refutation of bounded completeness
   should go through by `decide` with no classical axioms.
