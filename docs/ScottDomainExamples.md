@@ -343,8 +343,9 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **10 of the 16 entries in §2 are settled**, all kernel-checked — eight inhabited
-  and two refuted:
+- **14 of the 16 entries in §2 are settled**, all kernel-checked — ten inhabited and
+  four refuted. Two of the ten carry stated scope limits (§5.1); the two still open
+  are §5.3's λ-model structure and §5.5's bilimit:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -356,8 +357,12 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.6 | `psetNat : DInfinityFoundations (Nat → Prop)` | `Nat → Prop` | `[lem, propext, Quot.sound]` |
   | 3.7 | `pfunNat : DInfinityFoundations PFun` | graphs, single-valued | `[lem, propext, Quot.sound]` |
   | 3.8 | `streamDomain : DInfinityFoundations BStream` | graphs, prefix-closed | `[lem, propext, Quot.sound]` |
+  | 5.1 | `funSpace : TokenPoset → JoinTokens → DInfinityFoundations …` | ideals of step-function tokens | `[lem, propext, Quot.sound]` |
+  | 5.4 | `treeDomain : TreeSig → DInfinityFoundations …` | ideals of finite terms | `[lem, propext, Quot.sound]` |
   | 6.1 | `six_no_lub`, `six_basisCap_fails` (refutations) | `Six` | `[propext]` |
   | 6.2 | `nat_not_dcpo` (refutation) | `Nat` | `[propext, Quot.sound]` |
+  | 6.3 | `compact_iff_eq_bot` (refutation) | `Ival` | `[propext, Classical.choice, Quot.sound]` |
+  | 6.4 | `ui_compact_iff` (refutation) | `UI` | `[propext, Classical.choice, Quot.sound]` |
 
   §3.5 is the first entry proved as a **class** rather than an object: `fbcDomain`
   takes any finite bounded-complete pointed poset to a witness, so the row covers
@@ -564,6 +569,16 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   Note for other checkouts: the package now has a Mathlib dependency pinned to tag
   `v4.32.2`, matching `lean-toolchain` exactly, so no toolchain change is involved.
   A fresh checkout needs `lake exe cache get` before `lake build`.
+- **§6.4 is proved** in the same module: `ui_compact_iff : IsCompactEl uiLe x ↔
+  x = uiBot` — **K([0,1]) = {0}**, so the unit interval under ≤ is not algebraic
+  either. It is the cleaner half of the pair: the refuting family is just
+  "everything strictly below x", again totally ordered, with none of §6.3's
+  interval bookkeeping. `ui_way_below_of_lt` supplies the *positive* half the
+  catalogue asserts — x ≪ y whenever x < y — so what fails at §6.4 is algebraicity
+  alone, and §6.3 together with §6.4 is the standard demonstration that continuous
+  ⊋ algebraic. The order-theoretic vocabulary is shared with §6.3 rather than
+  duplicated: `IsDirectedFam`, `IsLubFam`, `WayBelow` and `IsCompactEl` take the
+  order as a parameter.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
