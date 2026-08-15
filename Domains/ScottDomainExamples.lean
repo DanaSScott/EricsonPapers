@@ -2239,7 +2239,7 @@ theorem ideal_isOpen_up (P : TokenPoset) (t : P.T) : (idealTop P).isOpen (idealU
 def principalIdeal (P : TokenPoset) (t : P.T) : TokenIdeal P :=
   ⟨fun a => P.le a t,
    ⟨fun a b hab hb => P.le_trans a b t hab hb,
-    fun a b ha hb => ⟨t, P.le_refl t, ha, hb⟩,
+    fun _ _ ha hb => ⟨t, P.le_refl t, ha, hb⟩,
     P.bot_le t⟩⟩
 
 theorem ideal_leq_of_sub {P : TokenPoset} {I J : TokenIdeal P}

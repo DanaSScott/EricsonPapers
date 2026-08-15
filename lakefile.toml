@@ -2,6 +2,17 @@ name = "Domains"
 version = "0.1.0"
 defaultTargets = ["Domains"]
 
+# Mathlib is required by exactly one module, `Domains/IntervalDomain.lean` (§6.3
+# and §6.4), which need the real numbers. `LRSODInCIC.lean` and
+# `ScottDomainExamples.lean` import nothing and must stay that way: the deep
+# embedding's whole point is that layer S's restrictions cannot be bypassed by
+# Lean's ambient library. The tag matches `lean-toolchain` exactly, so no
+# toolchain change is involved.
+[[require]]
+name = "mathlib"
+git = "https://github.com/leanprover-community/mathlib4"
+rev = "v4.32.2"
+
 # `Domains.+` selects the submodules of `Domains` but not a `Domains` root
 # module, so the library is exactly the files in `Domains/` and no root
 # aggregator file is needed.

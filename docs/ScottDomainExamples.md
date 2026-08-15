@@ -544,6 +544,26 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 
   Note also that `D₀ = 𝕊` is a lattice, which is Scott's own 1972 setting; §2's row
   saying D∞ is not a lattice refers to starting from a non-lattice D₀.
+- **§6.3 is proved**, in its own module
+  [IntervalDomain.lean](../Domains/IntervalDomain.lean):
+  `compact_iff_eq_bot : IsCompactEl I ↔ I = ivalBot` — **K(I[0,1]) = {⊥}**, so the
+  interval domain is not algebraic and not a Scott domain, which is this entry's
+  claim. For any I ≠ ⊥ the refuting family is the widenings of I: same right
+  endpoint and strictly smaller left endpoint (or the mirror image). Each family is
+  *totally ordered*, so directedness needs no construction — the upper bound of two
+  members is whichever is sharper — and its supremum is I, with no member above I.
+
+  This is the **only** module that imports Mathlib, which it needs for ℝ.
+  `LRSODInCIC.lean` and `ScottDomainExamples.lean` still import nothing, and the
+  quarantine is the point: the audit here reads `[propext, Classical.choice,
+  Quot.sound]`, and that `Classical.choice` is ℝ's, not the development's. The
+  order-theoretic vocabulary — directed family, supremum, way-below, compact
+  element — is defined locally, since the D1–D4 file is stated topologically and
+  carries none of it.
+
+  Note for other checkouts: the package now has a Mathlib dependency pinned to tag
+  `v4.32.2`, matching `lean-toolchain` exactly, so no toolchain change is involved.
+  A fresh checkout needs `lake exe cache get` before `lake build`.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
