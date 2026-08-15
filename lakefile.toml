@@ -1,0 +1,10 @@
+name = "Domains"
+version = "0.1.0"
+defaultTargets = ["Domains"]
+
+# `Domains.+` selects the submodules of `Domains` but not a `Domains` root
+# module, so the library is exactly the files in `Domains/` and no root
+# aggregator file is needed.
+[[lean_lib]]
+name = "Domains"
+globs = ["Domains.+"]

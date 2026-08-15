@@ -3,7 +3,7 @@
 project-tz: America/Los_Angeles
 
 Lars Ericson's work on continuous lattices, together with Lean 4 formalizations
-of it. The present artifact is `docs/LRSODInCIC.lean`: the layers **L, R, S, O,
+of it. The present artifact is `Domains/LRSODInCIC.lean`: the layers **L, R, S, O,
 D** — logic, inference rules, set theory, point-set topology, and the D∞-specific
 axioms — expressed in Lean 4's Calculus of Inductive Constructions.
 
@@ -63,7 +63,7 @@ Absent that, this one is primary.
 
 ## Constraints this repository already imposes
 
-`docs/LRSODInCIC.lean` is deliberately **standalone**. Preserve these unless the
+`Domains/LRSODInCIC.lean` is deliberately **standalone**. Preserve these unless the
 user says otherwise:
 
 - **No `import Mathlib`, and no import of the scott1972/1980/1982 developments.**
@@ -98,21 +98,31 @@ user says otherwise:
 
 ## Building
 
-There is **no lake package here yet** — `docs/LRSODInCIC.lean` is checked by
-invoking Lean on the file directly:
+This is a lake package: `lakefile.toml` declares one library, `Domains`, whose
+glob `Domains.+` selects every module under `Domains/` without needing a root
+aggregator file. The toolchain is pinned in `lean-toolchain` to
+`leanprover/lean4:v4.32.2`. There are no dependencies — no Mathlib, no std.
 
-    lean /Users/milnes/projects/EricsonPapers/docs/LRSODInCIC.lean
+    lake -d /Users/milnes/projects/EricsonPapers build
 
-Drive errors *and warnings* to zero; a warning is usually a latent bug. If the
-file grows into a package, add a `lakefile.toml` and build with a bare
-`lake build` — do not prefix it with `timeout`, which is not allowlisted; raise
-the Bash tool's own `timeout` parameter instead.
+Use `-d` rather than `cd`, so the command keeps a single allowlistable prefix.
+Do not prefix it with `timeout`, which is not allowlisted; raise the Bash tool's
+own `timeout` parameter instead.
+
+Drive errors *and warnings* to zero; a warning is usually a latent bug. The
+three `info:` lines the build prints are the `#print axioms` audit, not
+diagnostics — they are the expected output and must not be silenced.
 
 ## Repository layout
 
 - `README.md` — one-line description.
-- `docs/` — papers as `.pdf` and formalizations as `.lean`. The `LRSODInCIC (1).*`
-  pair are browser-download duplicates of `LRSODInCIC.*`.
+- `lakefile.toml`, `lean-toolchain` — the package and its pinned toolchain.
+- `Domains/` — the Lean library. `LRSODInCIC.lean` is the L/R/S/O/D
+  formalization; `ScottDomainExamples.lean` imports it and is otherwise empty,
+  reserved for Dana's witnesses.
+- `docs/` — papers as `.pdf`, plus `ScottDomainExamples.md`, the catalogue of
+  Scott domains those witnesses are to be drawn from. `LRSODInCIC (1).*` are
+  browser-download duplicates.
 - `.gitignore` — ignores lake/LaTeX/editor/macOS artifacts. `*.pdf` is
   deliberately **not** ignored: the rendered papers are tracked.
 
