@@ -343,7 +343,7 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **9 of the 16 entries in §2 are settled**, all kernel-checked — seven inhabited
+- **10 of the 16 entries in §2 are settled**, all kernel-checked — eight inhabited
   and two refuted:
 
   | § | witness | carrier | axioms consumed |
@@ -355,6 +355,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.5 | `fbcDomain : FinBCPoset D → DInfinityFoundations D` | any `D` | `[lem, propext, Quot.sound]` |
   | 3.6 | `psetNat : DInfinityFoundations (Nat → Prop)` | `Nat → Prop` | `[lem, propext, Quot.sound]` |
   | 3.7 | `pfunNat : DInfinityFoundations PFun` | graphs, single-valued | `[lem, propext, Quot.sound]` |
+  | 3.8 | `streamDomain : DInfinityFoundations BStream` | graphs, prefix-closed | `[lem, propext, Quot.sound]` |
   | 6.1 | `six_no_lub`, `six_basisCap_fails` (refutations) | `Six` | `[propext]` |
   | 6.2 | `nat_not_dcpo` (refutation) | `Nat` | `[propext, Quot.sound]` |
 
@@ -432,6 +433,19 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   finite sets of *pairs*, supplied by `pairDecode`, a surjection ℕ ↠ ℕ × ℕ written
   as the structurally recursive Cantor walk so that surjectivity needs only
   ordinary induction rather than a closed form and its inverse.
+
+  §3.8 makes the choice of base a **forced** one rather than a convenience. The
+  obvious base — up-sets of finite sets of index/value pairs, as in §3.7 — fails
+  `basisCpt` here: {(5,tt)} has no least stream above it, since indices 0–4 are
+  unconstrained by prefix-closedness, so its up-set is not principal and
+  compactness breaks. The compact opens are the up-sets of finite **words**, so
+  the base is indexed by `pairDecode k = (length, bit-mask)` with index 0 reserved
+  for ∅ — which `basisCap` needs, because two incompatible words have empty
+  intersection and some index must name it. `basisGen` is where prefix-closure
+  does its work: it fills in every index below the largest one a finite
+  approximation mentions, and `stream_exists_mask` packs those values into a mask
+  by induction, never extracting a function `i ↦ value` (that would be unique
+  choice).
 
   The two non-examples are refutations rather than witnesses, and neither needs
   `lem`: §6.1 decides by case analysis on a five-constructor type, §6.2 by `omega`.
