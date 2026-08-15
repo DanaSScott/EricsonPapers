@@ -471,6 +471,37 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   directed, so any finite set of its tokens already lies below one of its members:
   the finite approximation is a **single token**, and the bit masks, `pairDecode`
   and `List.mem_append` all disappear. The basis is just `n ↦ ↑(enum n)`.
+- **§5.1 is proved on top of §5.6**, as `funSpace : (P : TokenPoset) → (Q : JoinTokens)
+  → DInfinityFoundations (TokenIdeal (funTokens P Q))`. The tokens of [D → E] are
+  finite lists of step functions `(a,b)` ordered by entailment — b is below *every*
+  upper bound of what the other list contributes at a, which says b ⊑ ⊔{…} without
+  asserting the join exists — and `idealDomain` then discharges D1–D4. This is
+  Scott's information-systems presentation, and §5.6 is what licenses it.
+
+  Two limits, stated exactly rather than glossed:
+
+  1. The **value** side must carry total binary joins (`JoinTokens`). For a general
+     value domain a finite set of step functions is a token only when *consistent*,
+     and consistency is not decidable from a bare `TokenPoset`, so the carrier would
+     be a subtype with an undecidable predicate and `enum` could not be built
+     without choice. Carrying joins as data removes the condition. §4's dualizing
+     object [D → 𝕊] is covered — `sierpTokens` supplies `or` as the join.
+  2. **Not proved**: that these ideals biject with the Scott-continuous maps
+     D → E. That is the information-systems *definition* of the function space;
+     identifying it with actual functions needs a notion of continuous map, which
+     the D1–D4 vocabulary does not yet carry.
+
+  Building the tokens is `lem`-free (`funTokens` is `[propext, Quot.sound]`); only
+  `idealDomain`'s D2 reintroduces excluded middle.
+
+  Two interface weakenings to `TokenPoset` were needed and are worth recording,
+  since both are facts about the ideal completion rather than conveniences.
+  **Antisymmetry is never used** — a preorder of tokens suffices, which matters
+  because step-function tokens genuinely are only preordered (`[(a,b)]` and
+  `[(a,b),(a,b)]` entail each other without being equal). And **`enum_onto` needs
+  only mutual entailment**, not equality, because ↑t depends only on t's ⊑-class;
+  a bit-mask enumeration cannot reproduce a list's order or duplicates, so exact
+  surjectivity was unattainable as well as unnecessary.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
