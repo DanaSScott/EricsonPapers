@@ -107,9 +107,9 @@ aggregator file. The toolchain is pinned in `lean-toolchain` to
 
 Use `-d` rather than `cd`, so the command keeps a single allowlistable prefix.
 Write the path with `~`, not spelled out: this repository is worked from two
-machines whose home directories differ — `/home/milnes` on the Linux one,
-`/Users/scott` on the macOS one — and the checkout sits at
-`$HOME/projects/EricsonPapers` on both, so the tilde form is correct on each
+macOS machines — one of Brian's and one of Dana's — under different user names,
+so `$HOME` differs between them (`/Users/milnes` on Brian's). The checkout sits
+at `$HOME/projects/EricsonPapers` on both, so the tilde form is correct on each
 while remaining one constant prefix for the allowlist.
 Do not prefix it with `timeout`, which is not allowlisted; raise the Bash tool's
 own `timeout` parameter instead.
