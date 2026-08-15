@@ -343,7 +343,7 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **5 of the 16 entries in §2 are formally verified**, all kernel-checked:
+- **6 of the 16 entries in §2 are formally verified**, all kernel-checked:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -352,6 +352,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.3 | `flatBool : DInfinityFoundations (Option Bool)` | `Option Bool` | `[lem, propext, Quot.sound]` |
   | 3.4 | `vertNat : DInfinityFoundations (Option Nat)` | `Option Nat` | `[lem, propext, Quot.sound]` |
   | 3.5 | `fbcDomain : FinBCPoset D → DInfinityFoundations D` | any `D` | `[lem, propext, Quot.sound]` |
+  | 3.6 | `psetNat : DInfinityFoundations (Nat → Prop)` | `Nat → Prop` | `[lem, propext, Quot.sound]` |
 
   §3.5 is the first entry proved as a **class** rather than an object: `fbcDomain`
   takes any finite bounded-complete pointed poset to a witness, so the row covers
@@ -403,6 +404,20 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   `vert_top_not_isOpen`, that {∞} is **not** open — the topological form of
   "∞ ∉ K(ℕ<sup>∞</sup>)", and the reason the base has one member per finite
   point and none for ∞.
+  𝒫(ℕ) is the first uncountable carrier and the first with an infinite basis, and
+  both land on D3. Because `basis` is `Nat`-indexed the finite subsets must be
+  *enumerated*: `psetBits k` is the list of set bits of k, and `pset_exists_mask`
+  produces a mask for any list, which is why this entry alone reaches into
+  `Nat.testBit`. Its D2 is the deepest sobriety proof here — the generic point of
+  an irreducible closed C is ⋃C, and ⋃C ∈ C needs three steps: C is a down-set,
+  any two finite approximations drawn from C have a common extension **in** C
+  (`pset_common_extension`, where irreducibility is used), and hence by induction
+  every finite approximation of ⋃C already lies below one member (
+  `pset_member_covering`).
+
+  This also settles the *domain* half of §5.3: Pω is 𝒫(ℕ), so `psetNat` is its
+  Scott-domain structure. The λ-model structure of §5.3 — application, abstraction,
+  combinatory completeness — is **not** formalized, so §5.3's row stays open.
 - 0 non-examples are formalized. §6.1 is the cheapest next witness: a six-element
   finite poset, decidable throughout, so a refutation of bounded completeness
   should go through by `decide` with no classical axioms.
