@@ -502,6 +502,24 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   only mutual entailment**, not equality, because ↑t depends only on t's ⊑-class;
   a bit-mask enumeration cannot reproduce a list's order or duplicates, so exact
   surjectivity was unattainable as well as unnecessary.
+- **§5.4 is proved**, as `treeDomain : (S : TreeSig) → DInfinityFoundations
+  (TokenIdeal (treeTokens S))` — T^∞(Σ) as the ideals of the finite Σ-terms, again
+  via §5.6. The decisive choice is to make a finite partial term an **inductive
+  type**, `FinTree := hole | node sym FinTree FinTree`, rather than a set of
+  (position, symbol) pairs. A pair-set carries two side conditions — single-valued,
+  and prefix-closed so that no position is labelled above an unlabelled one — and
+  §3.8 already showed they cannot be dropped, since a basis element that is not
+  prefix-closed has no least member and `basisCpt` fails. As an inductive type both
+  hold by construction, and the undecidable validity predicate that would otherwise
+  block `enum` without choice (the §5.1 obstruction) never arises.
+
+  `treeLe_lub` is **axiom-free**: the least upper bound of two terms below a common
+  one is built by recursion on that bound, so no total join function is needed.
+  Countability comes from `treesUpTo n`, the trees of height ≤ n over the first n
+  symbols, with monotonicity in n; the enumeration is that list indexed through
+  `pairDecode`. Scope: binary signatures with countable symbols — any finite
+  signature binarizes, and §3.8 is the unary case, one unary symbol per letter,
+  exactly as this section says.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
