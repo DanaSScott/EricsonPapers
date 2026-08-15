@@ -103,9 +103,14 @@ glob `Domains.+` selects every module under `Domains/` without needing a root
 aggregator file. The toolchain is pinned in `lean-toolchain` to
 `leanprover/lean4:v4.32.2`. There are no dependencies — no Mathlib, no std.
 
-    lake -d /Users/milnes/projects/EricsonPapers build
+    lake -d ~/projects/EricsonPapers build
 
 Use `-d` rather than `cd`, so the command keeps a single allowlistable prefix.
+Write the path with `~`, not spelled out: this repository is worked from two
+machines whose home directories differ — `/home/milnes` on the Linux one,
+`/Users/scott` on the macOS one — and the checkout sits at
+`$HOME/projects/EricsonPapers` on both, so the tilde form is correct on each
+while remaining one constant prefix for the allowlist.
 Do not prefix it with `timeout`, which is not allowlisted; raise the Bash tool's
 own `timeout` parameter instead.
 
@@ -121,8 +126,10 @@ diagnostics — they are the expected output and must not be silenced.
   formalization; `ScottDomainExamples.lean` imports it and is otherwise empty,
   reserved for Dana's witnesses.
 - `docs/` — papers as `.pdf`, plus `ScottDomainExamples.md`, the catalogue of
-  Scott domains those witnesses are to be drawn from. `LRSODInCIC (1).*` are
-  browser-download duplicates.
+  Scott domains those witnesses are to be drawn from. A `LRSODInCIC (1).*` pair
+  of browser-download duplicates was tracked here and was deleted, having been
+  measured byte-identical to the originals. Do not re-add a `(1)` copy on a
+  later download.
 - `.gitignore` — ignores lake/LaTeX/editor/macOS artifacts. `*.pdf` is
   deliberately **not** ignored: the rendered papers are tracked.
 
