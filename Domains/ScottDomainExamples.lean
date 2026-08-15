@@ -3515,3 +3515,153 @@ def dInfinity : DInfinityFoundations (TokenIdeal dInfTokens) := idealDomain dInf
 #print axioms dtoksUpTo_covers -- [propext, Quot.sound]
 #print axioms dInfTokens    -- [propext, Quot.sound]
 #print axioms dInfinity     -- [lem, propext, Quot.sound]
+
+
+/- ----------------------------------------------------------------
+   §6.5 — powerdomains
+
+   The section makes two claims, and they are not of the same kind.
+
+   **The Hoare (lower) powerdomain stays inside the algebraic
+   lattices** — proved here. Its tokens are finite sets of tokens under
+   the lower preorder "every member of A is below some member of B",
+   joins are unions and are **total**, so `idealDomain` yields a Scott
+   domain that is moreover a lattice.
+
+   **The Plotkin (convex) powerdomain of a Scott domain need not be
+   bounded complete** — *not* proved here, and the reason is worth
+   stating. This is a refutation needing a *specific* Scott domain
+   whose convex powerdomain has a bounded pair with no least bound. The
+   small cases do not work: over 𝔹⊥ the pair {⊥,tt}, {⊥,ff} is bounded
+   by {tt,ff} and by {⊥,tt,ff}, and the latter is below the former, so
+   a least bound does exist there. A genuine counterexample is a piece
+   of domain theory in its own right, not a re-encoding of what the
+   catalogue asserts, so `egliMilnerLe` is recorded below for the
+   statement's sake and the refutation is left open.
+   ---------------------------------------------------------------- -/
+
+/-- Every list of naturals is bounded in length and in entries. -/
+theorem natList_bound : ∀ l : List Nat, ∃ n, l.length ≤ n ∧ ∀ x, x ∈ l → x < n := by
+  intro l
+  induction l with
+  | nil => exact ⟨0, by simp, (by intro x hx; cases hx)⟩
+  | cons a t ih =>
+      obtain ⟨n, h1, h2⟩ := ih
+      refine ⟨max (n + 1) (a + 1), ?_, ?_⟩
+      · simp only [List.length_cons]
+        omega
+      · intro x hx
+        cases hx with
+        | head        => omega
+        | tail _ hx'  => have := h2 x hx'; omega
+
+def natListsUpTo (n : Nat) : List (List Nat) := listsUpTo (List.range n) n
+
+theorem natListsUpTo_covers : ∀ l : List Nat, ∃ n, l ∈ natListsUpTo n := by
+  intro l
+  obtain ⟨n, h1, h2⟩ := natList_bound l
+  exact ⟨n, mem_listsUpTo _ n l h1 (fun x hx => List.mem_range.mpr (h2 x hx))⟩
+
+/-- The Hoare (lower) preorder on finite sets of tokens. -/
+def hoareLe (P : TokenPoset) (A B : List P.T) : Prop :=
+  ∀ a, a ∈ A → ∃ b, b ∈ B ∧ P.le a b
+
+/-- Joins in the Hoare powerdomain are unions, and they are **total** — which is
+    what puts it inside the algebraic lattices rather than merely the domains. -/
+theorem hoare_join_total (P : TokenPoset) (A B : List P.T) :
+    hoareLe P A (A ++ B) ∧ hoareLe P B (A ++ B) ∧
+      ∀ C, hoareLe P A C → hoareLe P B C → hoareLe P (A ++ B) C := by
+  refine ⟨?_, ?_, ?_⟩
+  · intro a ha
+    exact ⟨a, List.mem_append.mpr (Or.inl ha), P.le_refl a⟩
+  · intro a ha
+    exact ⟨a, List.mem_append.mpr (Or.inr ha), P.le_refl a⟩
+  · intro C hAC hBC a ha
+    rcases List.mem_append.mp ha with h | h
+    · exact hAC a h
+    · exact hBC a h
+
+def hoareEnum (P : TokenPoset) (k : Nat) : List P.T :=
+  ((natListsUpTo (pairDecode k).1).getD (pairDecode k).2 []).map P.enum
+
+/-- Every finite set of tokens is Hoare-equivalent to one built from enumerated
+    tokens: the replacement is elementwise, so it is an induction, not a choice. -/
+theorem hoare_enum_approx (P : TokenPoset) : ∀ A : List P.T,
+    ∃ l : List Nat, hoareLe P A (l.map P.enum) ∧ hoareLe P (l.map P.enum) A := by
+  intro A
+  induction A with
+  | nil => exact ⟨[], (by intro a ha; cases ha), (by intro a ha; cases ha)⟩
+  | cons a t ih =>
+      obtain ⟨l, h1, h2⟩ := ih
+      obtain ⟨k, hk1, hk2⟩ := P.enum_onto a
+      refine ⟨k :: l, ?_, ?_⟩
+      · intro x hx
+        cases hx with
+        | head => exact ⟨P.enum k, List.Mem.head _, hk2⟩
+        | tail _ hx' =>
+            obtain ⟨b, hb, hab⟩ := h1 x hx'
+            exact ⟨b, List.Mem.tail _ hb, hab⟩
+      · intro x hx
+        cases hx with
+        | head => exact ⟨a, List.Mem.head _, hk1⟩
+        | tail _ hx' =>
+            obtain ⟨b, hb, hab⟩ := h2 x hx'
+            exact ⟨b, List.Mem.tail _ hb, hab⟩
+
+def hoareTokens (P : TokenPoset) : TokenPoset where
+  T  := List P.T
+  le := hoareLe P
+
+  le_refl := fun _ a ha => ⟨a, ha, P.le_refl a⟩
+
+  le_trans := by
+    intro A B C hAB hBC a ha
+    obtain ⟨b, hb, hab⟩ := hAB a ha
+    obtain ⟨c, hc, hbc⟩ := hBC b hb
+    exact ⟨c, hc, P.le_trans a b c hab hbc⟩
+
+  bot    := []
+  bot_le := by intro _ a ha; cases ha
+
+  enum := hoareEnum P
+
+  enum_onto := by
+    intro A
+    obtain ⟨l, h1, h2⟩ := hoare_enum_approx P A
+    obtain ⟨n, hn⟩ := natListsUpTo_covers l
+    obtain ⟨i, hi, hget⟩ := List.mem_iff_getElem.mp hn
+    obtain ⟨k, hk⟩ := pairDecode_hits (n + i) i n rfl
+    have heq : hoareEnum P k = l.map P.enum := by
+      show ((natListsUpTo (pairDecode k).1).getD (pairDecode k).2 []).map P.enum
+        = l.map P.enum
+      rw [hk]
+      show ((natListsUpTo n).getD i []).map P.enum = l.map P.enum
+      rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem hi, hget]
+      rfl
+    exact ⟨k, by rw [heq]; exact h2, by rw [heq]; exact h1⟩
+
+  bounded_lub := by
+    intro A B _
+    obtain ⟨h1, h2, h3⟩ := hoare_join_total P A B
+    exact ⟨A ++ B, h1, h2, h3⟩
+
+/-- The Hoare powerdomain of a Scott domain, as a Scott domain. -/
+def hoarePowerdomain (P : TokenPoset) :
+    DInfinityFoundations (TokenIdeal (hoareTokens P)) :=
+  idealDomain (hoareTokens P)
+
+/-- The Egli–Milner (Plotkin) preorder, recorded for the statement's sake. The
+    refutation of bounded completeness for the convex powerdomain is **not**
+    formalized — see the note above. -/
+def egliMilnerLe (P : TokenPoset) (A B : List P.T) : Prop :=
+  (∀ a, a ∈ A → ∃ b, b ∈ B ∧ P.le a b) ∧ (∀ b, b ∈ B → ∃ a, a ∈ A ∧ P.le a b)
+
+/-- Egli–Milner refines Hoare: the convex order is the lower order plus the upper
+    condition, which is the half that costs bounded completeness. -/
+theorem egliMilner_le_hoare (P : TokenPoset) (A B : List P.T)
+    (h : egliMilnerLe P A B) : hoareLe P A B := h.1
+
+-- Axiom audit.
+#print axioms hoare_join_total   -- [propext]
+#print axioms hoareTokens        -- [propext, Quot.sound]
+#print axioms hoarePowerdomain   -- [lem, propext, Quot.sound]

@@ -629,6 +629,24 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   ⊋ algebraic. The order-theoretic vocabulary is shared with §6.3 rather than
   duplicated: `IsDirectedFam`, `IsLubFam`, `WayBelow` and `IsCompactEl` take the
   order as a parameter.
+- **§6.5 is half proved, and the halves are not of the same kind.** The **Hoare
+  (lower) powerdomain** is done: `hoarePowerdomain : (P : TokenPoset) →
+  DInfinityFoundations (TokenIdeal (hoareTokens P))`. Its tokens are finite sets of
+  tokens under "every member of A is below some member of B", and `hoare_join_total`
+  shows joins are unions and are **total** — which is what puts it inside the
+  algebraic *lattices*, as this section claims, rather than merely the domains.
+
+  The **Plotkin (convex)** claim — that the convex powerdomain of a Scott domain
+  need not be bounded complete — is **not** formalized, and the reason is worth
+  recording. It is a refutation needing a *specific* Scott domain whose convex
+  powerdomain has a bounded pair with no least bound, and the small cases do not
+  supply one: over 𝔹⊥ the pair {⊥,tt}, {⊥,ff} is bounded by {tt,ff} and by
+  {⊥,tt,ff}, and the second is below the first, so a least bound does exist there.
+  A genuine counterexample is a piece of domain theory in its own right rather than
+  a re-encoding of the catalogue, so `egliMilnerLe` is recorded for the statement's
+  sake, with `egliMilner_le_hoare` showing the convex order is the lower order plus
+  the upper condition — the half that costs bounded completeness — and the
+  refutation is left open.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
