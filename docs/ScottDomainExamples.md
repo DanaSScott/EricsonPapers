@@ -343,13 +343,14 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **3 of the 16 entries in §2 are formally verified**, all kernel-checked:
+- **4 of the 16 entries in §2 are formally verified**, all kernel-checked:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
   | 3.1 | `onePoint : DInfinityFoundations Unit` | `Unit` | `[propext, Quot.sound]` |
   | 3.2/4 | `sierp : DInfinityFoundations Bool` | `Bool` | `[lem, propext, Quot.sound]` |
   | 3.3 | `flatBool : DInfinityFoundations (Option Bool)` | `Option Bool` | `[lem, propext, Quot.sound]` |
+  | 3.4 | `vertNat : DInfinityFoundations (Option Nat)` | `Option Nat` | `[lem, propext, Quot.sound]` |
 
   The fourth column is the informative one. `propext` with `Quot.sound` (the
   latter via `funext`) appears in all three, from the closure equation
@@ -367,15 +368,26 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   exclude that case by handing the `irreducible` hypothesis exactly that
   decomposition, which is the first use of the negative half of D2's statement.
 
+  ℕ<sup>∞</sup> is where the infinite carrier changes both remaining fields. D2's
+  generic point can no longer be exhibited: a closed set is an arbitrary bounded
+  set of naturals, and its generic point is the **maximum**, constructed by
+  induction on the bound (`vert_max_of_bounded`). D3's `basisCpt` acquires real
+  content for the first time — a finite subcover has to be assembled one open at
+  a time (`vert_finite_cover`), because turning `∀ m, ∃ i, U i m` into a function
+  `m ↦ i` would need countable choice, and `lem` is the only classical principle
+  this development admits. The induction is legitimate because the goal is a
+  `Prop`, so each existential is eliminated inside the proof.
+
   Also checked, for 𝕊: the §4 enumeration, `sierp_open_cases` with the three
-  distinctness lemmas — the opens are exactly ∅, {⊤}, {⊥,⊤}. And for 𝔹⊥:
+  distinctness lemmas — the opens are exactly ∅, {⊤}, {⊥,⊤}. For 𝔹⊥:
   `flat_incomparable`, that tt and ff have no order relation, which is what
-  keeps it off the lattice column of §2.
+  keeps it off the lattice column of §2. For ℕ<sup>∞</sup>:
+  `vert_top_not_isOpen`, that {∞} is **not** open — the topological form of
+  "∞ ∉ K(ℕ<sup>∞</sup>)", and the reason the base has one member per finite
+  point and none for ∞.
 - 0 non-examples are formalized. §6.1 is the cheapest next witness: a six-element
   finite poset, decidable throughout, so a refutation of bounded completeness
   should go through by `decide` with no classical axioms.
-- §3.4 (ω + 1) is the natural next positive witness; it is the first case where a
-  non-compact element appears and `basisCpt` has real content.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an
