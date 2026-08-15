@@ -181,6 +181,16 @@ kernel-checked proof of that. Measured facts from that formalization:
   the `sober` field (D2) alone. Sobriety is the classical frontier here.
 - Basis: `basis 0 = {⊥,⊤}`, `basis (n+1) = {⊤}` — two distinct compact opens,
   closed under intersection, generating all three opens.
+- The enumeration "the opens are ∅, {⊤}, {⊥,⊤}" is itself checked, in
+  [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean): `sierp_open_cases`
+  puts every open into one of the three, and `sierp_empty_ne_top`,
+  `sierp_top_ne_full`, `sierp_empty_ne_full` separate them, so the count is
+  exactly three. Note where the axioms fall: the enumeration consumes
+  `[lem, propext, Quot.sound]` and the three distinctness facts consume none.
+  A subset here is a `Bool → Prop`, so `U ⊥` may be undecided and constructively
+  there are more opens than three; excluded middle is what collapses them to
+  three. This is the first result in the development whose *statement*, not only
+  whose proof, is classical.
 
 **Why `basisCap` is the topological shadow of bounded completeness.** For an
 algebraic domain D the sets ↑k, k ∈ K(D), are compact-open and form a base. Given
