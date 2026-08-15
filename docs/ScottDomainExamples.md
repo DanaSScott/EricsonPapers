@@ -520,6 +520,30 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   `pairDecode`. Scope: binary signatures with countable symbols — any finite
   signature binarizes, and §3.8 is the unary case, one unary symbol per letter,
   exactly as this section says.
+- **§5.5 is partially done, and the boundary is stated rather than papered over.**
+  Built and checked: the tower `D₀ = 𝕊`, `Dₙ₊₁ = [Dₙ → Dₙ]` (`tower`), every level
+  a Scott domain (`towerDomain n`), the embedding `e(x) = λy.x` as the one-element
+  step function ⊥ ↦ t (`emb`), its monotonicity (`emb_mono`), and the iterated
+  embedding into a later level with monotonicity (`liftTok`, `liftTok_mono`). The
+  iteration is possible only because §5.1's function space closes on `JoinTokens`:
+  the tokens of [D → D] join by concatenation, which is total, so `funJoin` carries
+  a `JoinTokens` to a `JoinTokens`.
+
+  **Not built: the bilimit.** D∞ is the colimit of the tower, its tokens
+  `Σ n, (tower n).base.T`, ordered by lifting both sides to a common level:
+  `⟨n,t⟩ ⊑ ⟨m,u⟩` iff `liftTok n k₁ t ⊑ liftTok m k₂ u` for some `k₁, k₂` with
+  `n + k₁ = m + k₂`. `liftTok` is stated additively so each *single* step
+  typechecks without transport, but that comparison cannot: the two sides live in
+  `tower (n+k₁)` and `tower (m+k₂)`, types equal only *propositionally*. So the
+  relation needs `h ▸ …`, and then transitivity, `bounded_lub` and `enum_onto` each
+  have to compose transports and appeal to `Nat.add_assoc` as a propositional type
+  equality. **The obstacle is that bookkeeping, not the mathematics.** The route
+  around it is a redesign, not a continuation: give the tower a level-indexed
+  inductive token type so one type carries all levels and cross-level comparison
+  becomes structural recursion instead of transport.
+
+  Note also that `D₀ = 𝕊` is a lattice, which is Scott's own 1972 setting; §2's row
+  saying D∞ is not a lattice refers to starting from a non-lattice D₀.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an

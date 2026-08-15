@@ -2810,3 +2810,113 @@ def treeDomain (S : TreeSig) : DInfinityFoundations (TokenIdeal (treeTokens S)) 
 #print axioms treeLe_lub  -- does not depend on any axioms
 #print axioms treeTokens  -- [propext, Quot.sound]
 #print axioms treeDomain  -- [lem, propext, Quot.sound]
+
+
+/- ----------------------------------------------------------------
+   §5.5 — the D∞ tower
+
+   `D₀ = 𝕊`, `Dₙ₊₁ = [Dₙ → Dₙ]`, with the embeddings that connect them.
+   Each level is a Scott domain by `towerDomain`.
+
+   The step is available because §5.1's function space closes on
+   `JoinTokens`: the tokens of [D → D] are lists of step functions and
+   their join is concatenation, which is total, so `funJoin` carries a
+   `JoinTokens` to a `JoinTokens` and the tower can be iterated. `D₀`
+   is 𝕊, a lattice, which is Scott's own 1972 setting; starting from a
+   non-lattice D₀ is what makes the catalogue's §2 row say D∞ is not a
+   lattice.
+
+   The embedding is the token-level `e(x) = λy.x`: the one-element step
+   function ⊥ ↦ t, which `emb_mono` shows is monotone.
+
+   **Not built: the bilimit itself.** See the note after `emb_mono`.
+   ---------------------------------------------------------------- -/
+
+/-- [Q → Q] again carries total joins — concatenation — so the tower can iterate. -/
+def funJoin (Q : JoinTokens) : JoinTokens where
+  base := funTokens Q.base Q
+  join := fun l m => List.append l m
+  le_join_left := by
+    intro l m a b hab v hv
+    exact hv a b (List.mem_append.mpr (Or.inl hab)) (Q.base.le_refl a)
+  le_join_right := by
+    intro l m a b hab v hv
+    exact hv a b (List.mem_append.mpr (Or.inr hab)) (Q.base.le_refl a)
+  join_least := by
+    intro l m z hlz hmz a b hab
+    rcases List.mem_append.mp hab with h | h
+    · exact hlz a b h
+    · exact hmz a b h
+
+/-- The tower `D₀ = 𝕊`, `Dₙ₊₁ = [Dₙ → Dₙ]`. -/
+def tower : Nat → JoinTokens
+  | 0     => sierpTokens
+  | n + 1 => funJoin (tower n)
+
+/-- Every level is a Scott domain. -/
+def towerDomain (n : Nat) : DInfinityFoundations (TokenIdeal (tower n).base) :=
+  idealDomain (tower n).base
+
+/-- The embedding `e(x) = λy.x`, at token level the step function ⊥ ↦ t. -/
+def emb (n : Nat) (t : (tower n).base.T) : (tower (n + 1)).base.T :=
+  [((tower n).base.bot, t)]
+
+theorem emb_mono (n : Nat) (t u : (tower n).base.T) (h : (tower n).base.le t u) :
+    (tower (n + 1)).base.le (emb n t) (emb n u) := by
+  intro a b hab v hv
+  cases hab with
+  | head =>
+      exact (tower n).base.le_trans t u v h
+        (hv (tower n).base.bot u (List.Mem.head _) ((tower n).base.le_refl _))
+  | tail _ hh => cases hh
+
+/-- Iterated embedding into a later level. Stated as `n + k` rather than with a
+    `n ≤ m` hypothesis, so that `tower (n + (k+1))` and `tower ((n+k) + 1)` are the
+    *same* type definitionally and no transport is needed. -/
+def liftTok (n : Nat) : (k : Nat) → (tower n).base.T → (tower (n + k)).base.T
+  | 0,     t => t
+  | k + 1, t => emb (n + k) (liftTok n k t)
+
+theorem liftTok_mono (n : Nat) :
+    ∀ (k : Nat) (t u : (tower n).base.T), (tower n).base.le t u →
+      (tower (n + k)).base.le (liftTok n k t) (liftTok n k u) := by
+  intro k
+  induction k with
+  | zero => intro t u h; exact h
+  | succ k ih =>
+      intro t u h
+      exact emb_mono (n + k) _ _ (ih t u h)
+
+/- ----------------------------------------------------------------
+   Where this stops, and why.
+
+   D∞ is the colimit of the tower along these embeddings. Its tokens
+   are `Σ n, (tower n).base.T`, and the order compares two tokens after
+   lifting both to a common level:
+
+       ⟨n, t⟩ ⊑ ⟨m, u⟩   iff   liftTok n k₁ t ⊑ liftTok m k₂ u
+                               for some k₁, k₂ with n + k₁ = m + k₂.
+
+   `liftTok` is stated additively precisely so that each single step
+   typechecks without transport. The comparison above cannot be: the
+   two sides live in `tower (n + k₁)` and `tower (m + k₂)`, which are
+   equal only *propositionally*, via `n + k₁ = m + k₂`. So the relation
+   needs `h ▸ …`, and then every law — reflexivity is fine, but
+   transitivity, `bounded_lub`, and `enum_onto` — has to compose
+   transports and appeal to `Nat.add_assoc` as a propositional type
+   equality. That bookkeeping, not the mathematics, is the obstacle.
+
+   The route that avoids it is a redesign rather than a continuation:
+   give the tower a *level-indexed inductive token type*, so that a
+   single type carries all levels and cross-level comparison is
+   structural recursion instead of transport. That is the next step,
+   and it is a substantial one — this is the boundary reached, stated
+   rather than papered over.
+   ---------------------------------------------------------------- -/
+
+-- Axiom audit.
+#print axioms funJoin      -- [propext, Quot.sound]
+#print axioms tower        -- [propext, Quot.sound]
+#print axioms emb_mono     -- [propext, Quot.sound]
+#print axioms liftTok_mono -- [propext, Quot.sound]
+#print axioms towerDomain  -- [lem, propext, Quot.sound]
