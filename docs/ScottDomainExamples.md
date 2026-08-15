@@ -343,25 +343,38 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **2 of the 16 entries in §2 are formally verified**, both kernel-checked:
+- **3 of the 16 entries in §2 are formally verified**, all kernel-checked:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
-  | 3.2/4 | `sierp : DInfinityFoundations Bool` | `Bool` | `[lem, propext, Quot.sound]` |
   | 3.1 | `onePoint : DInfinityFoundations Unit` | `Unit` | `[propext, Quot.sound]` |
+  | 3.2/4 | `sierp : DInfinityFoundations Bool` | `Bool` | `[lem, propext, Quot.sound]` |
+  | 3.3 | `flatBool : DInfinityFoundations (Option Bool)` | `Option Bool` | `[lem, propext, Quot.sound]` |
 
-  The difference in the third column is the point of the pair. `lem` enters
-  `sierp` only through D2, to case split on `C ⊤`; 𝟙 has no second point to split
-  on, so its sobriety proof is constructive and `lem` drops out. What remains in
-  both is `propext` with `Quot.sound` (the latter via `funext`), from the closure
-  equation `C = clSingleton ⊥` being an equality of predicates. Every obligation
-  for 𝟙 is discharged by definitional eta for structures — each `x : Unit` *is*
-  `()` — so `t0` closes by `rfl` where the `Bool` witness needed a case split.
+  The fourth column is the informative one. `propext` with `Quot.sound` (the
+  latter via `funext`) appears in all three, from the closure equation
+  `C = clSingleton y` being an equality of predicates. `lem` is what varies: it
+  enters through D2 alone, to decide of an arbitrary closed `C` which data it
+  contains. 𝟙 has no datum to decide, so its sobriety proof is constructive and
+  `lem` drops out; 𝕊 needs one such decision, 𝔹⊥ two. Every obligation for 𝟙 is
+  discharged by definitional eta for structures — each `x : Unit` *is* `()` — so
+  `t0` closes by `rfl` where the larger carriers need case splits.
+
+  𝔹⊥ is where D2 stops being routine. In 𝟙 and 𝕊 every inhabited closed set is
+  irreducible, so a generic point can simply be produced. In 𝔹⊥ the whole space
+  is closed and inhabited but **reducible** — it is ↓tt ∪ ↓ff with neither part
+  contained in the other — and has no generic point. The proof must therefore
+  exclude that case by handing the `irreducible` hypothesis exactly that
+  decomposition, which is the first use of the negative half of D2's statement.
+
+  Also checked, for 𝕊: the §4 enumeration, `sierp_open_cases` with the three
+  distinctness lemmas — the opens are exactly ∅, {⊤}, {⊥,⊤}. And for 𝔹⊥:
+  `flat_incomparable`, that tt and ff have no order relation, which is what
+  keeps it off the lattice column of §2.
 - 0 non-examples are formalized. §6.1 is the cheapest next witness: a six-element
   finite poset, decidable throughout, so a refutation of bounded completeness
   should go through by `decide` with no classical axioms.
-- §3.3 (flat 𝔹⊥) and §3.4 (ω + 1) are the natural next positive witnesses; the
-  first is finite and decidable, the second is the first case where a
+- §3.4 (ω + 1) is the natural next positive witness; it is the first case where a
   non-compact element appears and `basisCpt` has real content.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
