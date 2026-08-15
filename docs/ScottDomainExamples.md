@@ -647,6 +647,22 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   sake, with `egliMilner_le_hoare` showing the convex order is the lower order plus
   the upper condition — the half that costs bounded completeness — and the
   refutation is left open.
+- **§5.2 is proved as far as this vocabulary reaches, and the boundary is exact.**
+  Proved: por is **monotone in both arguments** (`por_mono_left`,
+  `por_mono_right`), hence continuous — on a flat domain a directed subset is a
+  chain with a greatest element, so preserving directed suprema *is* monotonicity —
+  hence an element of the function domain, which is the section's first claim.
+
+  Not proved, and not provable here: **undefinability in PCF**. Definability is a
+  statement about a *syntax* and its operational semantics, needing a PCF term
+  language and an adequacy theorem, neither of which the D1–D4 setting carries.
+
+  What replaces it is the semantic hallmark that separates por from every
+  sequential function: **`por_not_seq`, that por has no sequentiality index** — it
+  is strict in neither argument, so evaluation cannot begin anywhere. `lor_seq`
+  shows the notion is not vacuous (sequential left-strict or has one), and
+  `por_lor_agree` shows the two agree on total data, so the whole difference is the
+  behaviour at ⊥. That is exactly what "parallel" names.
 - The D1–D4 axioms are stated purely in the vocabulary of layer O
   ([LRSODInCIC.lean:104](../Domains/LRSODInCIC.lean)), so each witness above is built by
   giving a topology and discharging four proof obligations — not by defining an

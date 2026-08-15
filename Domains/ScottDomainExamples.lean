@@ -3665,3 +3665,112 @@ theorem egliMilner_le_hoare (P : TokenPoset) (A B : List P.T)
 #print axioms hoare_join_total   -- [propext]
 #print axioms hoareTokens        -- [propext, Quot.sound]
 #print axioms hoarePowerdomain   -- [lem, propext, Quot.sound]
+
+
+/- ----------------------------------------------------------------
+   §5.2 — parallel-or
+
+   por(tt, x) = tt, por(x, tt) = tt, por(ff, ff) = ff, on 𝔹⊥ from §3.3.
+   The catalogue makes two claims about it, and again they are not the
+   same kind of claim.
+
+   **It is monotone, hence continuous, hence an element of the function
+   domain** — proved here, in both arguments. On a flat domain monotone
+   *is* continuous: a directed subset of 𝔹⊥ is a chain with a greatest
+   element, so preservation of directed suprema is monotonicity.
+
+   **It is not definable in PCF (Plotkin 1977)** — not proved here, and
+   not provable in this vocabulary: definability is a statement about a
+   *syntax* and its operational semantics, so it needs a PCF term
+   language and an adequacy theorem, neither of which the D1–D4 setting
+   carries.
+
+   What *is* provable here is the semantic hallmark that separates por
+   from every sequential function: it has **no sequentiality index**.
+   A function of two flat arguments is sequential when some argument
+   position is strict — evaluating it must begin somewhere — and
+   `por_not_seq` shows por is strict in neither, while `lor_seq` shows
+   the notion is not vacuous. That is exactly what "parallel" names.
+   ---------------------------------------------------------------- -/
+
+def por : Option Bool → Option Bool → Option Bool
+  | some true,  _          => some true
+  | _,          some true  => some true
+  | some false, some false => some false
+  | _,          _          => none
+
+theorem por_tt_left (x : Option Bool) : por (some true) x = some true := rfl
+
+theorem por_tt_right (x : Option Bool) : por x (some true) = some true := by
+  cases x with
+  | none   => rfl
+  | some b => cases b with
+    | true  => rfl
+    | false => rfl
+
+theorem por_ff : por (some false) (some false) = some false := rfl
+
+/-- The flat order on 𝔹⊥: ⊥ below everything, data incomparable. -/
+def flatLe (x y : Option Bool) : Prop := x = none ∨ x = y
+
+theorem por_mono_left : ∀ x x' y, flatLe x x' → flatLe (por x y) (por x' y) := by
+  intro x x' y h
+  rcases h with h | h
+  · subst h
+    cases y with
+    | none   => exact Or.inl rfl
+    | some b => cases b with
+      | true  => exact Or.inr (by rw [por_tt_right, por_tt_right])
+      | false => exact Or.inl rfl
+  · subst h
+    exact Or.inr rfl
+
+theorem por_mono_right : ∀ x y y', flatLe y y' → flatLe (por x y) (por x y') := by
+  intro x y y' h
+  rcases h with h | h
+  · subst h
+    cases x with
+    | none   => exact Or.inl rfl
+    | some b => cases b with
+      | true  => exact Or.inr (by rw [por_tt_left, por_tt_left])
+      | false => exact Or.inl rfl
+  · subst h
+    exact Or.inr rfl
+
+/-- A function of two flat arguments is sequential when some argument position is
+    strict: evaluation has to begin somewhere. -/
+def StrictFirst (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ y, f none y = none
+
+def StrictSecond (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ x, f x none = none
+
+def HasSeqIndex (f : Option Bool → Option Bool → Option Bool) : Prop :=
+  StrictFirst f ∨ StrictSecond f
+
+/-- **por has no sequentiality index** — it is strict in neither argument. This is
+    the semantic content of "parallel". -/
+theorem por_not_seq : ¬ HasSeqIndex por := by
+  rintro (h | h)
+  · have h2 : (some true : Option Bool) = none := h (some true)
+    cases h2
+  · have h2 : (some true : Option Bool) = none := h (some true)
+    cases h2
+
+/-- Sequential (left-strict) or, to show the notion is not vacuous. -/
+def lor : Option Bool → Option Bool → Option Bool
+  | none,       _ => none
+  | some true,  _ => some true
+  | some false, y => y
+
+theorem lor_seq : HasSeqIndex lor := Or.inl (fun _ => rfl)
+
+/-- por and sequential or agree wherever both are defined on total data, so the
+    difference is exactly the behaviour at ⊥. -/
+theorem por_lor_agree (b c : Bool) : por (some b) (some c) = lor (some b) (some c) := by
+  cases b <;> cases c <;> rfl
+
+-- Axiom audit. The whole entry is `lem`-free; `propext` enters only through
+-- `rintro`'s case analysis.
+#print axioms por_mono_left   -- [propext]
+#print axioms por_mono_right  -- [propext]
+#print axioms por_not_seq     -- [propext]
+#print axioms lor_seq         -- does not depend on any axioms
