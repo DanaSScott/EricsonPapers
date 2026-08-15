@@ -2920,3 +2920,126 @@ theorem liftTok_mono (n : Nat) :
 #print axioms emb_mono     -- [propext, Quot.sound]
 #print axioms liftTok_mono -- [propext, Quot.sound]
 #print axioms towerDomain  -- [lem, propext, Quot.sound]
+
+
+/- ----------------------------------------------------------------
+   §5.3 — Pω as a λ-model: [Pω → Pω] is a retract of Pω
+
+   The *domain* is §3.6: Pω is 𝒫(ℕ), already a Scott domain as
+   `psetNat`. What this entry adds is the λ-model structure — Scott's
+   1976 "Data Types as Lattices" construction:
+
+       A · B  =  { m | ∃ k, ⟨k,m⟩ ∈ A and e_k ⊆ B }
+       Graph f = { ⟨k,m⟩ | m ∈ f(e_k) }
+       Fun (Graph f) = f     for continuous f
+
+   with `e_k` the finite set coded by k's bits, already available as
+   the §3.6 basis. Because the function space embeds into the domain
+   itself, self-application `A · A` is interpretable and Pω models the
+   untyped λ-calculus **with no inverse limit** — which is why §5.5 is
+   not needed for a model, only for Scott's original one.
+
+   One ingredient is missing and is supplied first. `pairDecode` is a
+   surjection ℕ ↠ ℕ×ℕ, which was enough for enumerating a basis, but a
+   *coding* needs a section: `Fun (Graph f) = f` reads back k and m
+   from ⟨k,m⟩ and so needs **injectivity**. `cantor` is that section,
+   defined through triangular numbers so that no division appears, and
+   `pairDecode_cantor` proves it inverse to the walk on the nose.
+   ---------------------------------------------------------------- -/
+
+def tri : Nat → Nat
+  | 0     => 0
+  | n + 1 => tri n + (n + 1)
+
+/-- The Cantor pairing, as a section of `pairDecode`. -/
+def cantor (n m : Nat) : Nat := tri (n + m) + m
+
+theorem pairDecode_cantor : ∀ s m n, n + m = s → pairDecode (cantor n m) = (n, m) := by
+  intro s
+  induction s with
+  | zero =>
+      intro m n h
+      have hn : n = 0 := by omega
+      have hm : m = 0 := by omega
+      subst hn
+      subst hm
+      rfl
+  | succ s ih =>
+      intro m
+      induction m with
+      | zero =>
+          intro n h
+          have hn : n = s + 1 := by omega
+          subst hn
+          have hc : cantor (s + 1) 0 = cantor 0 s + 1 := by
+            show tri ((s + 1) + 0) + 0 = tri (0 + s) + s + 1
+            rw [Nat.add_zero, Nat.zero_add, tri]
+            omega
+          rw [hc, pairDecode, ih s 0 (by omega)]
+      | succ m ihm =>
+          intro n h
+          have hidx : n + (m + 1) = (n + 1) + m := by omega
+          have hc : cantor n (m + 1) = cantor (n + 1) m + 1 := by
+            show tri (n + (m + 1)) + (m + 1) = tri ((n + 1) + m) + m + 1
+            rw [hidx]
+            omega
+          rw [hc, pairDecode, ihm (n + 1) (by omega)]
+
+theorem cantor_injective {n m n' m' : Nat} (h : cantor n m = cantor n' m') :
+    n = n' ∧ m = m' := by
+  have h1 : pairDecode (cantor n m) = (n, m) := pairDecode_cantor (n + m) m n rfl
+  have h2 : pairDecode (cantor n' m') = (n', m') := pairDecode_cantor (n' + m') m' n' rfl
+  rw [h, h2] at h1
+  injection h1 with e1 e2
+  exact ⟨e1.symm, e2.symm⟩
+
+/-- `e_k`, the finite set coded by the bits of k — the §3.6 basis, as a predicate. -/
+def eSet (k : Nat) : Nat → Prop := fun n => k.testBit n = true
+
+/-- Application: A · B. -/
+def powApp (A B : Nat → Prop) : Nat → Prop :=
+  fun m => ∃ k, A (cantor k m) ∧ ∀ n, eSet k n → B n
+
+/-- Graph: the code of a function as a set. -/
+def powGraph (f : (Nat → Prop) → (Nat → Prop)) : Nat → Prop :=
+  fun j => ∃ k m, j = cantor k m ∧ f (eSet k) m
+
+/-- Continuity in the form §3.6's topology already uses: monotone, and every
+    element of an output is already produced by a finite part of the input. -/
+structure PowContinuous (f : (Nat → Prop) → (Nat → Prop)) : Prop where
+  mono   : ∀ A B, (∀ n, A n → B n) → ∀ m, f A m → f B m
+  finite : ∀ B m, f B m → ∃ k, (∀ n, eSet k n → B n) ∧ f (eSet k) m
+
+/-- **Fun ∘ Graph = id**: the retraction, and with it §5.3's claim that
+    [Pω → Pω] is a retract of Pω. -/
+theorem powApp_powGraph (f : (Nat → Prop) → (Nat → Prop)) (hf : PowContinuous f)
+    (B : Nat → Prop) (m : Nat) : powApp (powGraph f) B m ↔ f B m := by
+  constructor
+  · rintro ⟨k, ⟨k', m', heq, hfk⟩, hsub⟩
+    obtain ⟨hk, hm⟩ := cantor_injective heq
+    subst hk
+    subst hm
+    exact hf.mono _ B hsub m hfk
+  · intro h
+    obtain ⟨k, hsub, hfk⟩ := hf.finite B m h
+    exact ⟨k, ⟨k, m, rfl, hfk⟩, hsub⟩
+
+/-- Every `Fun A` is itself continuous, so `Fun` really lands in [Pω → Pω]. -/
+theorem powApp_continuous (A : Nat → Prop) : PowContinuous (powApp A) where
+  mono := by
+    rintro B C hBC m ⟨k, hA, hsub⟩
+    exact ⟨k, hA, fun n hn => hBC n (hsub n hn)⟩
+  finite := by
+    rintro B m ⟨k, hA, hsub⟩
+    exact ⟨k, hsub, ⟨k, hA, fun _ hn => hn⟩⟩
+
+/-- Self-application is interpretable: this is what a λ-model needs and what the
+    retraction buys, with no inverse limit anywhere. -/
+def powSelfApp (A : Nat → Prop) : Nat → Prop := powApp A A
+
+-- Axiom audit. The whole λ-model layer is constructive: no `lem`, and the two
+-- remaining axioms come from `omega`'s arithmetic reasoning inside the pairing.
+#print axioms pairDecode_cantor  -- [propext, Quot.sound]
+#print axioms cantor_injective   -- [propext, Quot.sound]
+#print axioms powApp_powGraph    -- [propext, Quot.sound]
+#print axioms powApp_continuous  -- does not depend on any axioms

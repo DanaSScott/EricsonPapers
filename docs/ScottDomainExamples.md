@@ -343,9 +343,9 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **14 of the 16 entries in §2 are settled**, all kernel-checked — ten inhabited and
-  four refuted. Two of the ten carry stated scope limits (§5.1); the two still open
-  are §5.3's λ-model structure and §5.5's bilimit:
+- **15 of the 16 entries in §2 are settled**, all kernel-checked — eleven inhabited
+  and four refuted. §5.1 carries stated scope limits; the one still open is §5.5's
+  bilimit:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -358,6 +358,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.7 | `pfunNat : DInfinityFoundations PFun` | graphs, single-valued | `[lem, propext, Quot.sound]` |
   | 3.8 | `streamDomain : DInfinityFoundations BStream` | graphs, prefix-closed | `[lem, propext, Quot.sound]` |
   | 5.1 | `funSpace : TokenPoset → JoinTokens → DInfinityFoundations …` | ideals of step-function tokens | `[lem, propext, Quot.sound]` |
+  | 5.3 | `psetNat` (domain) + `powApp_powGraph` (λ-model) | `Nat → Prop` | `[lem, propext, Quot.sound]` |
   | 5.4 | `treeDomain : TreeSig → DInfinityFoundations …` | ideals of finite terms | `[lem, propext, Quot.sound]` |
   | 6.1 | `six_no_lub`, `six_basisCap_fails` (refutations) | `Six` | `[propext]` |
   | 6.2 | `nat_not_dcpo` (refutation) | `Nat` | `[propext, Quot.sound]` |
@@ -426,8 +427,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   `pset_member_covering`).
 
   This also settles the *domain* half of §5.3: Pω is 𝒫(ℕ), so `psetNat` is its
-  Scott-domain structure. The λ-model structure of §5.3 — application, abstraction,
-  combinatory completeness — is **not** formalized, so §5.3's row stays open.
+  Scott-domain structure. The λ-model half is now done too — see below.
   §3.7 forced an encoding decision that is worth recording. A partial function is
   carried as its **graph plus a proof of single-valuedness**, not as
   `Nat → Option Nat`. With `Option`, D2's generic point — the union of C's graphs
@@ -507,6 +507,18 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   only mutual entailment**, not equality, because ↑t depends only on t's ⊑-class;
   a bit-mask enumeration cannot reproduce a list's order or duplicates, so exact
   surjectivity was unattainable as well as unnecessary.
+- **§5.3 is complete**: the domain half is `psetNat` (§3.6), and the λ-model half is
+  `powApp_powGraph : powApp (powGraph f) B m ↔ f B m` for continuous f — **Fun ∘
+  Graph = id**, so [Pω → Pω] is a retract of Pω. `powApp_continuous` shows `Fun A`
+  really lands in the function space, and `powSelfApp A = A · A` is then definable:
+  self-application is interpretable **with no inverse limit**, which is why §5.5 is
+  needed only for Scott's original model and not for *a* model.
+
+  One ingredient had to be added. `pairDecode` is a surjection ℕ ↠ ℕ×ℕ, enough for
+  enumerating a basis, but reading k and m back out of ⟨k,m⟩ needs **injectivity** —
+  a section. `cantor` is it, defined through triangular numbers so no division
+  appears, with `pairDecode_cantor` proving it inverse to the walk on the nose. The
+  whole λ-model layer is `lem`-free; `powApp_continuous` needs no axioms at all.
 - **§5.4 is proved**, as `treeDomain : (S : TreeSig) → DInfinityFoundations
   (TokenIdeal (treeTokens S))` — T^∞(Σ) as the ideals of the finite Σ-terms, again
   via §5.6. The decisive choice is to make a finite partial term an **inductive
