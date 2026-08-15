@@ -343,7 +343,7 @@ and D ≅ 1 + (D × D) (lazy binary trees).
 Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
-- **4 of the 16 entries in §2 are formally verified**, all kernel-checked:
+- **5 of the 16 entries in §2 are formally verified**, all kernel-checked:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -351,6 +351,24 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   | 3.2/4 | `sierp : DInfinityFoundations Bool` | `Bool` | `[lem, propext, Quot.sound]` |
   | 3.3 | `flatBool : DInfinityFoundations (Option Bool)` | `Option Bool` | `[lem, propext, Quot.sound]` |
   | 3.4 | `vertNat : DInfinityFoundations (Option Nat)` | `Option Nat` | `[lem, propext, Quot.sound]` |
+  | 3.5 | `fbcDomain : FinBCPoset D → DInfinityFoundations D` | any `D` | `[lem, propext, Quot.sound]` |
+
+  §3.5 is the first entry proved as a **class** rather than an object: `fbcDomain`
+  takes any finite bounded-complete pointed poset to a witness, so the row covers
+  every such poset at once, the four-element diamond included. `boolFinBC` and
+  `sierpFromPoset` instantiate it, which keeps the theorem from being vacuous and
+  recovers 𝕊 from its order rather than from a topology given by hand. Its
+  topology is the Alexandrov one — on a finite poset that *is* the Scott topology,
+  since every directed set is finite and so has a greatest element.
+
+  Two things this entry isolates. Finiteness has to be made to produce **maximal**
+  elements with no `Finset` machinery: `fbc_exists_maximal` scans the enumeration
+  once, carrying the invariant that no index examined so far lies strictly above
+  the current element, which survives replacement because the element only moves
+  up. And `basisCap` is the **only** field that consumes bounded completeness —
+  ↑a ∩ ↑b is ↑(a ⊔ b) when a and b are bounded and ∅ when they are not, so a pair
+  with upper bounds but no least one leaves the intersection a union of several
+  basic opens with no single index to name it. That is precisely §6.1.
 
   The fourth column is the informative one. `propext` with `Quot.sound` (the
   latter via `funext`) appears in all three, from the closure equation
