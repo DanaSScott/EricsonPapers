@@ -344,8 +344,7 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
 - **All 16 entries in §2 are settled**, all kernel-checked — twelve inhabited and
-  four refuted. §5.1's first scope limit is gone (it was not a real limit) and its
-  second is half closed; see the §5.1 entry below:
+  four refuted, with **no outstanding scope limits**:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -501,14 +500,28 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   sit above everything and the construction builds [D → E] with a top adjoined.
   §4's dualizing object [D → 𝕊] is the former case.
 
-  The second limit is **half closed**. `funApply` proves the operative content —
-  each ideal of step functions *acts* on ideals of arguments, and `funApply_mono_left`
-  / `funApply_mono_right` give monotonicity in both. Directedness of the result is
-  where the value-side joins do real work, via `contributions_lub`, which builds the
-  least upper bound of what a token contributes at an argument by induction with
-  `lem` deciding each comparison — so no decidability of the order is needed. Still
-  missing: the *bijection* with Scott-continuous maps, which needs a notion of
-  continuous map between ideal completions and the two-way correspondence.
+  The second limit is **closed**: the ideals of `funTokens P Q` are in **bijection
+  with the continuous maps**, not merely a stand-in for them. With
+  `IdealContinuous` as the finite-approximation form of Scott continuity — monotone,
+  and every output token already produced by a single input token — the two
+  directions are `funApply` (an ideal of step functions acts on ideals) and `ofFun`
+  (a continuous map's graph), and they invert each other:
+
+  | theorem | content |
+  |---|---|
+  | `funApply_ofFun` | Fun ∘ Graph = id — applying a map's graph recovers the map |
+  | `ofFun_funApply` | Graph ∘ Fun = id — the graph of an ideal's action is that ideal |
+  | `funApply_continuous` | every ideal's action is itself continuous, so `ofFun` needs no side hypothesis |
+
+  Two lemmas carry the weight. `contributions_in` bounds a step-set's contributions
+  inside the output ideal, by induction with `lem` deciding each comparison — that
+  is what makes `ofFun`'s ideal down-closed and gives one half of each round trip.
+  `stepEntails_of_stepLe` and `stepEntails_mono_arg` transfer entailment along the
+  order on step-sets and along the argument, which is what lets the other half
+  collect finitely many witnesses into one ideal member by induction rather than by
+  choosing per element.
+
+  **§5.1 therefore carries no remaining scope limit.**
 
   Building the tokens is `lem`-free (`funTokens` is `[propext, Quot.sound]`); only
   `idealDomain`'s D2 reintroduces excluded middle.

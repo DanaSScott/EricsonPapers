@@ -2380,12 +2380,22 @@ theorem ideal_principal_mem (P : TokenPoset) (t : P.T) :
    dualizing object [D → 𝕊] is the former case, 𝕊's tokens carrying
    `or` as their join.
 
-   **Still not proved:** that these ideals are in *bijection* with the
-   Scott-continuous maps D → E. What is proved is the operative half —
-   `funApply`, that each ideal of step functions acts on ideals of
-   arguments, monotonically in both. The missing piece is a notion of
-   continuous map between ideal completions, and the two-way
-   correspondence with it.
+   **The bijection with continuous maps is now proved.** With
+   `IdealContinuous` as the finite-approximation form of Scott
+   continuity — monotone, and every output token already produced by a
+   single input token — the two directions are
+
+       funApply  : ideal of step functions → map on ideals
+       ofFun     : continuous map → ideal of step functions (its graph)
+
+   and they invert each other: `funApply_ofFun` gives Fun ∘ Graph = id
+   and `ofFun_funApply` gives Graph ∘ Fun = id. So the ideals of
+   `funTokens P Q` *are* the continuous maps, not merely a stand-in for
+   them, and §5.1 carries no remaining scope limit.
+
+   `funApply_continuous` closes the loop by showing every ideal's action
+   is itself continuous, so `ofFun` may be applied to it without a side
+   hypothesis.
    ---------------------------------------------------------------- -/
 
 structure JoinTokens where
@@ -2630,11 +2640,167 @@ theorem funApply_mono_right (P : TokenPoset) (Q : JoinTokens)
   rintro b ⟨l, a, hF, hX, hent⟩
   exact ⟨l, a, hF, h a hX, hent⟩
 
+/-- Entailment is monotone in the argument: a larger argument admits more
+    contributions, so any bound for it bounds the smaller argument's. -/
+theorem stepEntails_mono_arg {P Q : TokenPoset} {m : List (P.T × Q.T)} {a a' : P.T}
+    {b : Q.T} (h : stepEntails P Q m a' b) (hle : P.le a' a) : stepEntails P Q m a b :=
+  fun v hv => h v (fun a'' b'' hmem ha'' => hv a'' b'' hmem (P.le_trans a'' a' a ha'' hle))
+
+/-- An ideal contains an upper bound of any finite set of its members: directedness,
+    iterated. -/
+theorem ideal_finite_bound (P : TokenPoset) (I : TokenIdeal P) :
+    ∀ l : List P.T, (∀ a, a ∈ l → I.val a) → ∃ c, I.val c ∧ ∀ a, a ∈ l → P.le a c := by
+  intro l
+  induction l with
+  | nil => intro _; exact ⟨P.bot, I.2.2.2, (by intro a ha; cases ha)⟩
+  | cons a t ih =>
+      intro h
+      obtain ⟨c, hc, hbound⟩ := ih (fun x hx => h x (List.Mem.tail _ hx))
+      obtain ⟨d, hd, hac, hcd⟩ := I.2.2.1 a c (h a (List.Mem.head _)) hc
+      refine ⟨d, hd, ?_⟩
+      intro x hx
+      cases hx with
+      | head       => exact hac
+      | tail _ hx' => exact P.le_trans x c d (hbound x hx') hcd
+
+/-- Continuity of a map between ideal completions, in the finite-approximation form
+    the algebraic setting uses: monotone, and every output token is already produced
+    by a single input token. -/
+structure IdealContinuous (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal P → TokenIdeal Q.base) : Prop where
+  mono     : ∀ X Y, (∀ a, X.val a → Y.val a) → ∀ b, (F X).val b → (F Y).val b
+  finitary : ∀ X b, (F X).val b → ∃ a, X.val a ∧ (F (principalIdeal P a)).val b
+
+/-- The contributions of a step-set at an argument are jointly bounded inside the
+    output ideal. Induction with `lem` deciding each comparison; the value-side
+    joins are not needed, because the bound is taken inside `F X` by directedness. -/
+theorem contributions_in (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal P → TokenIdeal Q.base) (hF : IdealContinuous P Q F)
+    (X : TokenIdeal P) (a : P.T) (haX : X.val a) :
+    ∀ l : List (P.T × Q.base.T), (∀ p, p ∈ l → (F (principalIdeal P p.1)).val p.2) →
+      ∃ c, (F X).val c ∧ ∀ a' b', (a', b') ∈ l → P.le a' a → Q.base.le b' c := by
+  intro l
+  induction l with
+  | nil =>
+      intro _
+      exact ⟨Q.base.bot, (F X).2.2.2, (by intro a' b' hmem; cases hmem)⟩
+  | cons p t ih =>
+      intro hl
+      obtain ⟨c, hc, hbound⟩ := ih (fun q hq => hl q (List.Mem.tail _ hq))
+      cases lem (P.le p.1 a) with
+      | inl hpa =>
+          have hp : (F X).val p.2 :=
+            hF.mono (principalIdeal P p.1) X
+              (fun x hx => X.2.1 x a (P.le_trans x p.1 a hx hpa) haX) p.2
+              (hl p (List.Mem.head _))
+          obtain ⟨d, hd, hpd, hcd⟩ := (F X).2.2.1 p.2 c hp hc
+          refine ⟨d, hd, ?_⟩
+          intro a' b' hmem ha'
+          cases hmem with
+          | head       => exact hpd
+          | tail _ hm  => exact Q.base.le_trans b' c d (hbound a' b' hm ha') hcd
+      | inr hpa =>
+          refine ⟨c, hc, ?_⟩
+          intro a' b' hmem ha'
+          cases hmem with
+          | head      => exact absurd ha' hpa
+          | tail _ hm => exact hbound a' b' hm ha'
+
 #print axioms funTokens              -- [propext, Quot.sound]
 #print axioms funSpace               -- [lem, propext, Quot.sound]
 #print axioms stepEntails_of_unbounded
 #print axioms contributions_lub
 #print axioms funApply
+/-- Entailment transfers along the order on step-sets. -/
+theorem stepEntails_of_stepLe {P Q : TokenPoset} {l m : List (P.T × Q.T)} {a : P.T} {b : Q.T}
+    (hlm : stepLe P Q l m) (h : stepEntails P Q l a b) : stepEntails P Q m a b :=
+  fun v hv => h v (fun a' b' hmem ha' => hlm a' b' hmem v
+    (fun a'' b'' hmem'' ha'' => hv a'' b'' hmem'' (P.le_trans a'' a' a ha'' ha')))
+
+theorem funApply_continuous (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal (funTokens P Q.base)) : IdealContinuous P Q (funApply P Q F) where
+  mono     := fun X Y h b hb => funApply_mono_right P Q F X Y h b hb
+  finitary := by
+    rintro X b ⟨l, a, hF, hX, hent⟩
+    exact ⟨a, hX, ⟨l, a, hF, P.le_refl a, hent⟩⟩
+
+/-- **Graph**: the step-function tokens a continuous map validates. -/
+def ofFun (P : TokenPoset) (Q : JoinTokens) (F : TokenIdeal P → TokenIdeal Q.base)
+    (hF : IdealContinuous P Q F) : TokenIdeal (funTokens P Q.base) :=
+  ⟨fun (l : List (P.T × Q.base.T)) => ∀ p, p ∈ l → (F (principalIdeal P p.1)).val p.2,
+   ⟨by
+      intro m l hml hl p hp
+      obtain ⟨c, hc, hbound⟩ :=
+        contributions_in P Q F hF (principalIdeal P p.1) p.1 (P.le_refl p.1) l hl
+      exact (F (principalIdeal P p.1)).2.1 p.2 c (hml p.1 p.2 hp c hbound) hc,
+    by
+      intro l1 l2 h1 h2
+      refine ⟨List.append l1 l2, ?_, ?_, ?_⟩
+      · intro p hp
+        rcases List.mem_append.mp hp with h | h
+        · exact h1 p h
+        · exact h2 p h
+      · intro a b hab v hv
+        exact hv a b (List.mem_append.mpr (Or.inl hab)) (P.le_refl a)
+      · intro a b hab v hv
+        exact hv a b (List.mem_append.mpr (Or.inr hab)) (P.le_refl a),
+    by intro p hp; cases hp⟩⟩
+
+/-- **Fun ∘ Graph = id**: applying the graph of a continuous map recovers the map. -/
+theorem funApply_ofFun (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal P → TokenIdeal Q.base) (hF : IdealContinuous P Q F) (X : TokenIdeal P) :
+    funApply P Q (ofFun P Q F hF) X = F X := by
+  apply Subtype.ext
+  funext b
+  refine propext ⟨?_, ?_⟩
+  · rintro ⟨l, a, hl, ha, hent⟩
+    obtain ⟨c, hc, hbound⟩ := contributions_in P Q F hF X a ha l hl
+    exact (F X).2.1 b c (hent c hbound) hc
+  · intro hb
+    obtain ⟨a, haX, hb'⟩ := hF.finitary X b hb
+    refine ⟨[(a, b)], a, ?_, haX, ?_⟩
+    · intro p hp
+      cases hp with
+      | head      => exact hb'
+      | tail _ hh => cases hh
+    · intro v hv
+      exact hv a b (List.Mem.head _) (P.le_refl a)
+
+/-- **Graph ∘ Fun = id**: the graph of an ideal's action is that ideal. -/
+theorem ofFun_funApply (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal (funTokens P Q.base)) :
+    ofFun P Q (funApply P Q F) (funApply_continuous P Q F) = F := by
+  have key : ∀ (m : List (P.T × Q.base.T)),
+      (∀ p, p ∈ m → (funApply P Q F (principalIdeal P p.1)).val p.2) →
+      ∃ L, F.val L ∧ ∀ p, p ∈ m → stepEntails P Q.base L p.1 p.2 := by
+    intro m
+    induction m with
+    | nil => intro _; exact ⟨[], F.2.2.2, (by intro p hp; cases hp)⟩
+    | cons p t ih =>
+        intro hm
+        obtain ⟨L, hL, hall⟩ := ih (fun q hq => hm q (List.Mem.tail _ hq))
+        obtain ⟨l', a', hl', ha', hent'⟩ := hm p (List.Mem.head _)
+        obtain ⟨M, hM, hLM, hlM⟩ := F.2.2.1 L l' hL hl'
+        refine ⟨M, hM, ?_⟩
+        intro q hq
+        cases hq with
+        | head       => exact stepEntails_mono_arg (stepEntails_of_stepLe hlM hent') ha'
+        | tail _ hq' => exact stepEntails_of_stepLe hLM (hall q hq')
+  apply Subtype.ext
+  funext l
+  refine propext ⟨?_, ?_⟩
+  · intro hl
+    obtain ⟨L, hL, hall⟩ := key l hl
+    exact F.2.1 l L (fun a b hab => hall (a, b) hab) hL
+  · intro hl p hp
+    exact ⟨l, p.1, hl, P.le_refl p.1,
+           stepEntails_of_mem hp (P.le_refl p.1) (Q.base.le_refl p.2)⟩
+
+#print axioms ideal_finite_bound
+#print axioms contributions_in
+#print axioms ofFun
+#print axioms funApply_ofFun
+#print axioms ofFun_funApply
 
 
 /- ----------------------------------------------------------------
