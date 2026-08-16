@@ -2361,22 +2361,31 @@ theorem ideal_principal_mem (P : TokenPoset) (t : P.T) :
    that the join exists. That formulation is what keeps the definition
    first-order and join-free.
 
-   **Scope, stated exactly.** The value side is required to have
-   *total* binary joins (`JoinTokens`). For a general value domain a
-   finite set of step functions is a legitimate token only when it is
-   *consistent*, and consistency is not decidable from a bare
-   `TokenPoset` — so the carrier would be a subtype with an undecidable
-   predicate, and `enum` could not be constructed without choice, which
-   this development does not admit. Carrying joins as data removes the
-   condition: every finite list is consistent, bounded by the fold of
-   the joins. §4's dualizing object [D → 𝕊] is covered, since 𝕊's
-   tokens carry `or` as their join.
+   **Scope.** `funTokens` and `funSpace` take *arbitrary* token posets
+   on both sides. An earlier version of this comment claimed the value
+   side needed total joins, on the grounds that only *consistent* step
+   sets are legitimate tokens and consistency is undecidable; that was
+   wrong, and the reason is `stepEntails_of_unbounded` below. A step
+   set whose contributions at `a` have no upper bound entails
+   everything at `a` — the premise "v bounds the contributions" is
+   unsatisfiable, so the implication is vacuous. An inconsistent token
+   is therefore high in the order rather than ill-formed, the carrier
+   can be all finite lists, and no subtype and no decidability question
+   arises.
 
-   Not proved here: that these ideals are in bijection with the
-   Scott-continuous maps D → E. That is the information-systems
-   *definition* of the function space; identifying it with the space of
-   actual functions needs a notion of continuous map, which the D1–D4
-   vocabulary does not yet carry.
+   What total joins on the value side actually buy is the reading of
+   the result: with them no token is inconsistent, so the ideals are
+   [D → E]; without them the inconsistent tokens sit above everything
+   and the construction builds [D → E] with a top adjoined. §4's
+   dualizing object [D → 𝕊] is the former case, 𝕊's tokens carrying
+   `or` as their join.
+
+   **Still not proved:** that these ideals are in *bijection* with the
+   Scott-continuous maps D → E. What is proved is the operative half —
+   `funApply`, that each ideal of step functions acts on ideals of
+   arguments, monotonically in both. The missing piece is a notion of
+   continuous map between ideal completions, and the two-way
+   correspondence with it.
    ---------------------------------------------------------------- -/
 
 structure JoinTokens where
@@ -2387,26 +2396,26 @@ structure JoinTokens where
   join_least    : ∀ a b v, base.le a v → base.le b v → base.le (join a b) v
 
 /-- b is below every upper bound of what l contributes at a. -/
-def stepEntails (P : TokenPoset) (Q : JoinTokens) (l : List (P.T × Q.base.T))
-    (a : P.T) (b : Q.base.T) : Prop :=
-  ∀ v, (∀ a' b', (a', b') ∈ l → P.le a' a → Q.base.le b' v) → Q.base.le b v
+def stepEntails (P : TokenPoset) (Q : TokenPoset) (l : List (P.T × Q.T))
+    (a : P.T) (b : Q.T) : Prop :=
+  ∀ v, (∀ a' b', (a', b') ∈ l → P.le a' a → Q.le b' v) → Q.le b v
 
-def stepLe (P : TokenPoset) (Q : JoinTokens) (l m : List (P.T × Q.base.T)) : Prop :=
+def stepLe (P : TokenPoset) (Q : TokenPoset) (l m : List (P.T × Q.T)) : Prop :=
   ∀ a b, (a, b) ∈ l → stepEntails P Q m a b
 
-theorem stepEntails_of_mem {P : TokenPoset} {Q : JoinTokens} {m : List (P.T × Q.base.T)}
-    {a a' : P.T} {b b' : Q.base.T} (hmem : (a', b') ∈ m) (ha : P.le a' a)
-    (hb : Q.base.le b b') : stepEntails P Q m a b :=
-  fun v hv => Q.base.le_trans b b' v hb (hv a' b' hmem ha)
+theorem stepEntails_of_mem {P : TokenPoset} {Q : TokenPoset} {m : List (P.T × Q.T)}
+    {a a' : P.T} {b b' : Q.T} (hmem : (a', b') ∈ m) (ha : P.le a' a)
+    (hb : Q.le b b') : stepEntails P Q m a b :=
+  fun v hv => Q.le_trans b b' v hb (hv a' b' hmem ha)
 
-theorem stepEntails_mono {P : TokenPoset} {Q : JoinTokens} {m m' : List (P.T × Q.base.T)}
-    {a : P.T} {b : Q.base.T} (hsub : ∀ q, q ∈ m → q ∈ m')
+theorem stepEntails_mono {P : TokenPoset} {Q : TokenPoset} {m m' : List (P.T × Q.T)}
+    {a : P.T} {b : Q.T} (hsub : ∀ q, q ∈ m → q ∈ m')
     (h : stepEntails P Q m a b) : stepEntails P Q m' a b :=
   fun v hv => h v (fun a' b' hmem ha => hv a' b' (hsub (a', b') hmem) ha)
 
 /-- The enumeration of finite step-function sets: k's bits, decoded as index pairs. -/
-def stepEnum (P : TokenPoset) (Q : JoinTokens) (k : Nat) : List (P.T × Q.base.T) :=
-  (psetBits k).map (fun i => (P.enum (pairDecode i).1, Q.base.enum (pairDecode i).2))
+def stepEnum (P : TokenPoset) (Q : TokenPoset) (k : Nat) : List (P.T × Q.T) :=
+  (psetBits k).map (fun i => (P.enum (pairDecode i).1, Q.enum (pairDecode i).2))
 
 theorem mem_bits_or {k i j : Nat} : j ∈ psetBits (k ||| 2 ^ i) ↔ (j ∈ psetBits k ∨ j = i) := by
   rw [pset_mem_bits, Nat.testBit_or, Bool.or_eq_true, Nat.testBit_two_pow, decide_eq_true_iff,
@@ -2419,8 +2428,8 @@ theorem mem_bits_or {k i j : Nat} : j ∈ psetBits (k ||| 2 ^ i) ↔ (j ∈ pset
     · exact Or.inl h
     · exact Or.inr h.symm
 
-def funTokens (P : TokenPoset) (Q : JoinTokens) : TokenPoset where
-  T  := List (P.T × Q.base.T)
+def funTokens (P : TokenPoset) (Q : TokenPoset) : TokenPoset where
+  T  := List (P.T × Q.T)
   le := stepLe P Q
 
   le_refl := by
@@ -2455,9 +2464,9 @@ def funTokens (P : TokenPoset) (Q : JoinTokens) : TokenPoset where
     | cons p t ih =>
         obtain ⟨kt, ht1, ht2⟩ := ih
         obtain ⟨n, hn1, hn2⟩ := P.enum_onto p.1
-        obtain ⟨m, hm1, hm2⟩ := Q.base.enum_onto p.2
+        obtain ⟨m, hm1, hm2⟩ := Q.enum_onto p.2
         obtain ⟨i, hi⟩ := pairDecode_hits (n + m) m n rfl
-        have hnew : (P.enum n, Q.base.enum m) ∈ stepEnum P Q (kt ||| 2 ^ i) := by
+        have hnew : (P.enum n, Q.enum m) ∈ stepEnum P Q (kt ||| 2 ^ i) := by
           refine List.mem_map.mpr ⟨i, mem_bits_or.mpr (Or.inr rfl), ?_⟩
           rw [hi]
         have hold : ∀ q, q ∈ stepEnum P Q kt → q ∈ stepEnum P Q (kt ||| 2 ^ i) := by
@@ -2498,7 +2507,7 @@ def funTokens (P : TokenPoset) (Q : JoinTokens) : TokenPoset where
       · exact hmz a b h
 
 /-- [D → E] as a Scott domain: the ideals of the step-function tokens. -/
-def funSpace (P : TokenPoset) (Q : JoinTokens) :
+def funSpace (P : TokenPoset) (Q : TokenPoset) :
     DInfinityFoundations (TokenIdeal (funTokens P Q)) :=
   idealDomain (funTokens P Q)
 
@@ -2532,8 +2541,100 @@ def sierpTokens : JoinTokens where
 -- Axiom audit. The token construction itself is `lem`-free — building the tokens
 -- of [D → E] is constructive; only passing them through `idealDomain`, whose D2
 -- decides membership of a closed set, brings excluded middle back.
-#print axioms funTokens  -- [propext, Quot.sound]
-#print axioms funSpace   -- [lem, propext, Quot.sound]
+/-- **Why no consistency side-condition is needed.** A finite step-set whose
+    contributions at `a` have no upper bound entails *everything* at `a`: the
+    premise "v bounds the contributions" is unsatisfiable, so the implication is
+    vacuous. An inconsistent token therefore sits high in the order rather than
+    being ill-formed, which is why the carrier can be all finite lists — no
+    subtype, and so no undecidable predicate blocking `enum`. -/
+theorem stepEntails_of_unbounded {P Q : TokenPoset} {m : List (P.T × Q.T)}
+    {a : P.T} (h : ¬ ∃ v, ∀ a' b', (a', b') ∈ m → P.le a' a → Q.le b' v) (b : Q.T) :
+    stepEntails P Q m a b :=
+  fun v hv => absurd ⟨v, hv⟩ h
+
+/-- The least upper bound of what `l` contributes at `a`. Built by induction with
+    `lem` deciding each `a' ⊑ a`, so no decidability of the order is needed. Total
+    joins on the value side are what make it exist. -/
+theorem contributions_lub (P : TokenPoset) (Q : JoinTokens) (l : List (P.T × Q.base.T))
+    (a : P.T) :
+    ∃ c, (∀ a' b', (a', b') ∈ l → P.le a' a → Q.base.le b' c) ∧
+         (∀ v, (∀ a' b', (a', b') ∈ l → P.le a' a → Q.base.le b' v) → Q.base.le c v) := by
+  induction l with
+  | nil =>
+      refine ⟨Q.base.bot, ?_, ?_⟩
+      · intro a' b' hmem
+        cases hmem
+      · intro v _
+        exact Q.base.bot_le v
+  | cons p t ih =>
+      obtain ⟨c, hbound, hleast⟩ := ih
+      cases lem (P.le p.1 a) with
+      | inl hpa =>
+          refine ⟨Q.join p.2 c, ?_, ?_⟩
+          · intro a' b' hmem ha'
+            cases hmem with
+            | head       => exact Q.le_join_left _ _
+            | tail _ hm  => exact Q.base.le_trans b' c _ (hbound a' b' hm ha') (Q.le_join_right _ _)
+          · intro v hv
+            refine Q.join_least _ _ v (hv p.1 p.2 (List.Mem.head _) hpa) ?_
+            exact hleast v (fun a' b' hm ha' => hv a' b' (List.Mem.tail _ hm) ha')
+      | inr hpa =>
+          refine ⟨c, ?_, ?_⟩
+          · intro a' b' hmem ha'
+            cases hmem with
+            | head      => exact absurd ha' hpa
+            | tail _ hm => exact hbound a' b' hm ha'
+          · intro v hv
+            exact hleast v (fun a' b' hm ha' => hv a' b' (List.Mem.tail _ hm) ha')
+
+/-- **Applying an ideal of step functions to an ideal of arguments.** This is the
+    operative half of "the ideals of [D → E] *are* the continuous maps": each ideal
+    acts on ideals, monotonically. The full bijection with Scott-continuous maps is
+    still not proved — that needs a notion of continuous map between ideal
+    completions — but the action itself is here. -/
+def funApply (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal (funTokens P Q.base)) (X : TokenIdeal P) : TokenIdeal Q.base :=
+  ⟨fun b => ∃ l a, F.val l ∧ X.val a ∧ stepEntails P Q.base l a b,
+   ⟨by
+      rintro b b' hbb ⟨l, a, hF, hX, hent⟩
+      exact ⟨l, a, hF, hX, fun v hv => Q.base.le_trans b b' v hbb (hent v hv)⟩,
+    by
+      rintro b1 b2 ⟨l1, a1, hF1, hX1, hent1⟩ ⟨l2, a2, hF2, hX2, hent2⟩
+      obtain ⟨l, hFl, hl1, hl2⟩ := F.2.2.1 l1 l2 hF1 hF2
+      obtain ⟨a, hXa, ha1, ha2⟩ := X.2.2.1 a1 a2 hX1 hX2
+      obtain ⟨c, hcb, hcl⟩ := contributions_lub P Q l a
+      have key : ∀ (l0 : List (P.T × Q.base.T)) (a0 : P.T),
+          (funTokens P Q.base).le l0 l → P.le a0 a →
+          ∀ a' b', (a', b') ∈ l0 → P.le a' a0 → Q.base.le b' c := by
+        intro l0 a0 hl0 ha0 a' b' hmem ha'
+        refine hl0 a' b' hmem c ?_
+        intro a'' b'' hmem'' ha''
+        exact hcb a'' b'' hmem''
+          (P.le_trans a'' a' a ha'' (P.le_trans a' a0 a ha' ha0))
+      refine ⟨c, ⟨l, a, hFl, hXa, fun v hv => hcl v hv⟩, ?_, ?_⟩
+      · exact hent1 c (key l1 a1 hl1 ha1)
+      · exact hent2 c (key l2 a2 hl2 ha2),
+    ⟨[], P.bot, F.2.2.2, X.2.2.2, fun v _ => Q.base.bot_le v⟩⟩⟩
+
+theorem funApply_mono_left (P : TokenPoset) (Q : JoinTokens)
+    (F G : TokenIdeal (funTokens P Q.base)) (X : TokenIdeal P)
+    (h : ∀ l, F.val l → G.val l) :
+    ∀ b, (funApply P Q F X).val b → (funApply P Q G X).val b := by
+  rintro b ⟨l, a, hF, hX, hent⟩
+  exact ⟨l, a, h l hF, hX, hent⟩
+
+theorem funApply_mono_right (P : TokenPoset) (Q : JoinTokens)
+    (F : TokenIdeal (funTokens P Q.base)) (X Y : TokenIdeal P)
+    (h : ∀ a, X.val a → Y.val a) :
+    ∀ b, (funApply P Q F X).val b → (funApply P Q F Y).val b := by
+  rintro b ⟨l, a, hF, hX, hent⟩
+  exact ⟨l, a, hF, h a hX, hent⟩
+
+#print axioms funTokens              -- [propext, Quot.sound]
+#print axioms funSpace               -- [lem, propext, Quot.sound]
+#print axioms stepEntails_of_unbounded
+#print axioms contributions_lub
+#print axioms funApply
 
 
 /- ----------------------------------------------------------------
@@ -2991,7 +3092,7 @@ def treeDomain (S : TreeSig) : DInfinityFoundations (TokenIdeal (treeTokens S)) 
 
 /-- [Q → Q] again carries total joins — concatenation — so the tower can iterate. -/
 def funJoin (Q : JoinTokens) : JoinTokens where
-  base := funTokens Q.base Q
+  base := funTokens Q.base Q.base
   join := fun l m => List.append l m
   le_join_left := by
     intro l m a b hab v hv

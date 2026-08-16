@@ -344,8 +344,8 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
 [ScottDomainExamples.lean](../Domains/ScottDomainExamples.lean) as of this writing:
 
 - **All 16 entries in §2 are settled**, all kernel-checked — twelve inhabited and
-  four refuted. §5.1 carries stated scope limits (its value side needs total joins,
-  and ideals are not identified with continuous maps); everything else is complete:
+  four refuted. §5.1's first scope limit is gone (it was not a real limit) and its
+  second is half closed; see the §5.1 entry below:
 
   | § | witness | carrier | axioms consumed |
   |---|---------|---------|-----------------|
@@ -484,18 +484,31 @@ Measured against [LRSODInCIC.lean](../Domains/LRSODInCIC.lean) and
   asserting the join exists — and `idealDomain` then discharges D1–D4. This is
   Scott's information-systems presentation, and §5.6 is what licenses it.
 
-  Two limits, stated exactly rather than glossed:
+  **Both scope limits have now been addressed, and the first turned out not to be
+  one.** `funTokens` and `funSpace` take *arbitrary* token posets on both sides.
+  The earlier claim — that the value side needed total joins because only
+  *consistent* step sets are legitimate tokens and consistency is undecidable — was
+  wrong, and `stepEntails_of_unbounded` says why: a step set whose contributions at
+  `a` have no upper bound entails **everything** at `a`, since the premise "v bounds
+  the contributions" is unsatisfiable and the implication is vacuous. An
+  inconsistent token is high in the order, not ill-formed; the carrier is all finite
+  lists; no subtype and no decidability question arises. The construction never
+  mentioned `Q.join` at all — the hypothesis was decoration, which a grep confirmed
+  before the generalization was made.
 
-  1. The **value** side must carry total binary joins (`JoinTokens`). For a general
-     value domain a finite set of step functions is a token only when *consistent*,
-     and consistency is not decidable from a bare `TokenPoset`, so the carrier would
-     be a subtype with an undecidable predicate and `enum` could not be built
-     without choice. Carrying joins as data removes the condition. §4's dualizing
-     object [D → 𝕊] is covered — `sierpTokens` supplies `or` as the join.
-  2. **Not proved**: that these ideals biject with the Scott-continuous maps
-     D → E. That is the information-systems *definition* of the function space;
-     identifying it with actual functions needs a notion of continuous map, which
-     the D1–D4 vocabulary does not yet carry.
+  What total joins actually buy is the *reading* of the result: with them no token
+  is inconsistent and the ideals are [D → E]; without them the inconsistent tokens
+  sit above everything and the construction builds [D → E] with a top adjoined.
+  §4's dualizing object [D → 𝕊] is the former case.
+
+  The second limit is **half closed**. `funApply` proves the operative content —
+  each ideal of step functions *acts* on ideals of arguments, and `funApply_mono_left`
+  / `funApply_mono_right` give monotonicity in both. Directedness of the result is
+  where the value-side joins do real work, via `contributions_lub`, which builds the
+  least upper bound of what a token contributes at an argument by induction with
+  `lem` deciding each comparison — so no decidability of the order is needed. Still
+  missing: the *bijection* with Scott-continuous maps, which needs a notion of
+  continuous map between ideal completions and the two-way correspondence.
 
   Building the tokens is `lem`-free (`funTokens` is `[propext, Quot.sound]`); only
   `idealDomain`'s D2 reintroduces excluded middle.
