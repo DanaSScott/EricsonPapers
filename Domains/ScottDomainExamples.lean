@@ -6,10 +6,18 @@
    split across modules so that no single file has to be read whole.
 
      Enumeration      lists of bounded length, shared machinery
-     Finite           §3.1 𝟙 · §3.2/§4 𝕊 · §3.3 𝔹⊥ · §3.4 ω+1 · §3.5 finite bd-compl.
-     Infinite         §3.6 𝒫(ℕ) · §3.7 ℕ⇀ℕ · §3.8 streams
-                      — also `psetBits` and `pairDecode`, the bit-mask and
-                        pairing machinery later sections enumerate with
+     OnePoint         §3.1 𝟙
+     Sierpinski       §3.2 / §4 𝕊, and the proof its three opens are all of them
+     Flat             §3.3 𝔹⊥
+     Vertical         §3.4 ω + 1
+     FiniteBC         §3.5 finite bounded-complete posets, as a class
+     PowerSet         §3.6 𝒫(ℕ) — also `psetBits`, the bit-mask enumeration of
+                      finite sets that later sections reuse
+     PartialFunctions §3.7 ℕ ⇀ ℕ — also `pairDecode`, the surjection ℕ ↠ ℕ×ℕ
+     Streams          §3.8 streams under the prefix order
+
+   `Finite` and `Infinite` remain as aggregators of §3.1–§3.5 and §3.6–§3.8,
+   so an import of either still works.
      IdealCompletion  §5.6 Idl(P), the general theorem the rest of §5 rests on
      FunctionSpace    §5.1 [D→E], and its bijection with the continuous maps
      LambdaModels     §5.2 parallel-or · §5.3 Pω as a λ-model
