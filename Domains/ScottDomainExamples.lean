@@ -1,8 +1,33 @@
 /- ================================================================
    Scott domain examples.
 
-   The witnesses go here. §3.1, the one-point domain, is below; the
-   rest are Dana's work.
+   The mathematics formalized here is catalogued in
+   ../docs/ScottDomainExamples.md, and the sections below follow that
+   catalogue's numbering:
+
+     §3.1 𝟙   §3.2/§4 𝕊   §3.3 𝔹⊥   §3.4 ω+1   §3.5 finite bd-compl.
+     §3.6 𝒫(ℕ)   §3.7 ℕ⇀ℕ   §3.8 streams
+     §5.6 Idl(P)   §5.1 [D→E]   §5.2 parallel-or   §5.3 Pω   §5.4 T^∞(Σ)
+     §5.5 D∞
+     §6.1 two minimal upper bounds   §6.2 ℕ not a dcpo   §6.5 powerdomains
+
+   Two deviations from strict catalogue order, both forced by Lean's
+   definition-before-use rule rather than chosen:
+
+   - **§5.6 comes first within §5.** The ideal completion is what §5.1,
+     §5.4, §5.5 and §6.5 are built on, so it has to precede them. That
+     is also the mathematical order: §5.6 is the general theorem and
+     the rest are instances of it.
+   - **Shared utilities stay in the section that first needed them**,
+     rather than being hoisted into a preliminaries block: `psetBits`
+     and `pset_exists_mask` in §3.6, `pairDecode` in §3.7, `listsUpTo`
+     in §5.5. Each such section precedes every later user.
+
+   §6.3 and §6.4 are *not* here: they need ℝ, hence Mathlib, and live
+   in `IntervalDomain.lean` so that this file and `LRSODInCIC.lean`
+   stay import-free. §3.2's witness `sierp` is in `LRSODInCIC.lean`
+   itself; what §3.2 adds here is the proof that its three opens are
+   all of them.
 
    The import below brings in the L, R, S, O, D layers, so the
    following are in scope without qualification:
@@ -10,9 +35,6 @@
      TopologicalSpace D        -- layer O, 3 axioms + openInter
      DInfinityFoundations D    -- D1 t0, D2 sober, D3 basis*, D4 bot
      sierpTop, sierp           -- the Sierpiński witness, already checked
-
-   The mathematics to be formalized here is catalogued in
-   ../docs/ScottDomainExamples.md.
    ================================================================ -/
 
 import Domains.LRSODInCIC
@@ -1283,101 +1305,6 @@ theorem pset_bot_le (A : Nat → Prop) : psetTop.leq (fun _ => False) A :=
 
 
 /- ----------------------------------------------------------------
-   §6.1 — bounded completeness fails: two minimal upper bounds
-
-   The first **non**-example. Everything before this inhabited
-   `DInfinityFoundations`; here the content is a refutation, and the
-   two results below are the two faces of the same failure:
-
-   - order-theoretic: {a, b} has upper bounds c and d and no least
-     one, so the poset is not bounded complete;
-   - topological: ↑a ∩ ↑b = {c, d} is not ↑k for any k, so the
-     compact-open base is not closed under intersection and `basisCap`
-     (D3) cannot be discharged.
-
-   §4 predicted exactly this — `basisCap` is the topological form of
-   bounded completeness — and §3.5's `fbcDomain` consumes the
-   hypothesis at exactly that field. This poset satisfies every other
-   `FinBCPoset` field; `bounded_lub` is the one it fails.
-
-   Note on the count: the catalogue says "six elements", but the
-   structure it describes — ⊥, a, b, c, d — has five, and its own
-   claim ↑a ∩ ↑b = {c, d} is the five-element reading. Formalized as
-   five.
-   ---------------------------------------------------------------- -/
-
-inductive Six where
-  | bot | a | b | c | d
-  deriving DecidableEq
-
-/-- ⊥ ⊑ a, b ⊑ c, d, with a ∦ b and c ∦ d. -/
-def sixLe : Six → Six → Bool
-  | .bot, _  => true
-  | .a,   .a => true
-  | .a,   .c => true
-  | .a,   .d => true
-  | .b,   .b => true
-  | .b,   .c => true
-  | .b,   .d => true
-  | .c,   .c => true
-  | .d,   .d => true
-  | _,    _  => false
-
-def sixUp (x : Six) : Six → Prop := fun z => sixLe x z = true
-
-/-- Bounded completeness fails: a and b are bounded, with no least upper bound. -/
-theorem six_no_lub :
-    ¬ ∃ u, sixLe .a u = true ∧ sixLe .b u = true ∧
-        ∀ v, sixLe .a v = true → sixLe .b v = true → sixLe u v = true := by
-  rintro ⟨u, hau, hbu, hlub⟩
-  cases u with
-  | bot => exact Bool.noConfusion hau
-  | a   => exact Bool.noConfusion hbu
-  | b   => exact Bool.noConfusion hau
-  | c   => exact Bool.noConfusion (hlub .d rfl rfl)
-  | d   => exact Bool.noConfusion (hlub .c rfl rfl)
-
-/-- The pair *is* bounded — c and d are both upper bounds. What fails is leastness. -/
-theorem six_bounded : sixLe .a .c = true ∧ sixLe .b .c = true := ⟨rfl, rfl⟩
-
-/-- D3 fails topologically: ↑a ∩ ↑b is not a principal up-set. -/
-theorem six_basisCap_fails :
-    ¬ ∃ k, ∀ z, (sixUp .a z ∧ sixUp .b z) ↔ sixUp k z := by
-  rintro ⟨k, hk⟩
-  have hc : sixUp k .c := (hk .c).mp ⟨rfl, rfl⟩
-  have hd : sixUp k .d := (hk .d).mp ⟨rfl, rfl⟩
-  cases k with
-  | bot => exact Bool.noConfusion ((hk .a).mpr rfl).2
-  | a   => exact Bool.noConfusion ((hk .a).mpr rfl).2
-  | b   => exact Bool.noConfusion ((hk .b).mpr rfl).1
-  | c   => exact Bool.noConfusion hd
-  | d   => exact Bool.noConfusion hc
-
-
-/- ----------------------------------------------------------------
-   §6.2 — directed completeness fails: ℕ under ≤
-
-   ℕ is directed — any two naturals have an upper bound — and has no
-   upper bound at all, so it is not a dcpo. Adjoining ∞ repairs it and
-   gives §3.4's `vertNat`, which is the point of the pair: "cpo" is a
-   completeness requirement, not a size requirement.
-   ---------------------------------------------------------------- -/
-
-theorem nat_directed (n m : Nat) : ∃ k, n ≤ k ∧ m ≤ k := ⟨n + m, by omega, by omega⟩
-
-theorem nat_not_dcpo : ¬ ∃ m : Nat, ∀ n : Nat, n ≤ m := by
-  rintro ⟨m, hm⟩
-  exact absurd (hm (m + 1)) (by omega)
-
--- Axiom audit for the two non-examples. Both are refutations of finite or
--- arithmetic facts, so neither needs `lem`: §6.1 decides by case analysis on a
--- five-constructor type, §6.2 by `omega`.
-#print axioms six_no_lub          -- [propext]
-#print axioms six_basisCap_fails  -- [propext]
-#print axioms nat_not_dcpo        -- [propext, Quot.sound]
-
-
-/- ----------------------------------------------------------------
    §3.7 — partial functions ℕ ⇀ ℕ, ordered by graph inclusion
 
    A partial function is carried as its **graph together with a proof
@@ -2610,6 +2537,236 @@ def sierpTokens : JoinTokens where
 
 
 /- ----------------------------------------------------------------
+   §5.2 — parallel-or
+
+   por(tt, x) = tt, por(x, tt) = tt, por(ff, ff) = ff, on 𝔹⊥ from §3.3.
+   The catalogue makes two claims about it, and again they are not the
+   same kind of claim.
+
+   **It is monotone, hence continuous, hence an element of the function
+   domain** — proved here, in both arguments. On a flat domain monotone
+   *is* continuous: a directed subset of 𝔹⊥ is a chain with a greatest
+   element, so preservation of directed suprema is monotonicity.
+
+   **It is not definable in PCF (Plotkin 1977)** — not proved here, and
+   not provable in this vocabulary: definability is a statement about a
+   *syntax* and its operational semantics, so it needs a PCF term
+   language and an adequacy theorem, neither of which the D1–D4 setting
+   carries.
+
+   What *is* provable here is the semantic hallmark that separates por
+   from every sequential function: it has **no sequentiality index**.
+   A function of two flat arguments is sequential when some argument
+   position is strict — evaluating it must begin somewhere — and
+   `por_not_seq` shows por is strict in neither, while `lor_seq` shows
+   the notion is not vacuous. That is exactly what "parallel" names.
+   ---------------------------------------------------------------- -/
+
+def por : Option Bool → Option Bool → Option Bool
+  | some true,  _          => some true
+  | _,          some true  => some true
+  | some false, some false => some false
+  | _,          _          => none
+
+theorem por_tt_left (x : Option Bool) : por (some true) x = some true := rfl
+
+theorem por_tt_right (x : Option Bool) : por x (some true) = some true := by
+  cases x with
+  | none   => rfl
+  | some b => cases b with
+    | true  => rfl
+    | false => rfl
+
+theorem por_ff : por (some false) (some false) = some false := rfl
+
+/-- The flat order on 𝔹⊥: ⊥ below everything, data incomparable. -/
+def flatLe (x y : Option Bool) : Prop := x = none ∨ x = y
+
+theorem por_mono_left : ∀ x x' y, flatLe x x' → flatLe (por x y) (por x' y) := by
+  intro x x' y h
+  rcases h with h | h
+  · subst h
+    cases y with
+    | none   => exact Or.inl rfl
+    | some b => cases b with
+      | true  => exact Or.inr (by rw [por_tt_right, por_tt_right])
+      | false => exact Or.inl rfl
+  · subst h
+    exact Or.inr rfl
+
+theorem por_mono_right : ∀ x y y', flatLe y y' → flatLe (por x y) (por x y') := by
+  intro x y y' h
+  rcases h with h | h
+  · subst h
+    cases x with
+    | none   => exact Or.inl rfl
+    | some b => cases b with
+      | true  => exact Or.inr (by rw [por_tt_left, por_tt_left])
+      | false => exact Or.inl rfl
+  · subst h
+    exact Or.inr rfl
+
+/-- A function of two flat arguments is sequential when some argument position is
+    strict: evaluation has to begin somewhere. -/
+def StrictFirst (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ y, f none y = none
+
+def StrictSecond (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ x, f x none = none
+
+def HasSeqIndex (f : Option Bool → Option Bool → Option Bool) : Prop :=
+  StrictFirst f ∨ StrictSecond f
+
+/-- **por has no sequentiality index** — it is strict in neither argument. This is
+    the semantic content of "parallel". -/
+theorem por_not_seq : ¬ HasSeqIndex por := by
+  rintro (h | h)
+  · have h2 : (some true : Option Bool) = none := h (some true)
+    cases h2
+  · have h2 : (some true : Option Bool) = none := h (some true)
+    cases h2
+
+/-- Sequential (left-strict) or, to show the notion is not vacuous. -/
+def lor : Option Bool → Option Bool → Option Bool
+  | none,       _ => none
+  | some true,  _ => some true
+  | some false, y => y
+
+theorem lor_seq : HasSeqIndex lor := Or.inl (fun _ => rfl)
+
+/-- por and sequential or agree wherever both are defined on total data, so the
+    difference is exactly the behaviour at ⊥. -/
+theorem por_lor_agree (b c : Bool) : por (some b) (some c) = lor (some b) (some c) := by
+  cases b <;> cases c <;> rfl
+
+-- Axiom audit. The whole entry is `lem`-free; `propext` enters only through
+-- `rintro`'s case analysis.
+#print axioms por_mono_left   -- [propext]
+#print axioms por_mono_right  -- [propext]
+#print axioms por_not_seq     -- [propext]
+#print axioms lor_seq         -- does not depend on any axioms
+/- ----------------------------------------------------------------
+   §5.3 — Pω as a λ-model: [Pω → Pω] is a retract of Pω
+
+   The *domain* is §3.6: Pω is 𝒫(ℕ), already a Scott domain as
+   `psetNat`. What this entry adds is the λ-model structure — Scott's
+   1976 "Data Types as Lattices" construction:
+
+       A · B  =  { m | ∃ k, ⟨k,m⟩ ∈ A and e_k ⊆ B }
+       Graph f = { ⟨k,m⟩ | m ∈ f(e_k) }
+       Fun (Graph f) = f     for continuous f
+
+   with `e_k` the finite set coded by k's bits, already available as
+   the §3.6 basis. Because the function space embeds into the domain
+   itself, self-application `A · A` is interpretable and Pω models the
+   untyped λ-calculus **with no inverse limit** — which is why §5.5 is
+   not needed for a model, only for Scott's original one.
+
+   One ingredient is missing and is supplied first. `pairDecode` is a
+   surjection ℕ ↠ ℕ×ℕ, which was enough for enumerating a basis, but a
+   *coding* needs a section: `Fun (Graph f) = f` reads back k and m
+   from ⟨k,m⟩ and so needs **injectivity**. `cantor` is that section,
+   defined through triangular numbers so that no division appears, and
+   `pairDecode_cantor` proves it inverse to the walk on the nose.
+   ---------------------------------------------------------------- -/
+
+def tri : Nat → Nat
+  | 0     => 0
+  | n + 1 => tri n + (n + 1)
+
+/-- The Cantor pairing, as a section of `pairDecode`. -/
+def cantor (n m : Nat) : Nat := tri (n + m) + m
+
+theorem pairDecode_cantor : ∀ s m n, n + m = s → pairDecode (cantor n m) = (n, m) := by
+  intro s
+  induction s with
+  | zero =>
+      intro m n h
+      have hn : n = 0 := by omega
+      have hm : m = 0 := by omega
+      subst hn
+      subst hm
+      rfl
+  | succ s ih =>
+      intro m
+      induction m with
+      | zero =>
+          intro n h
+          have hn : n = s + 1 := by omega
+          subst hn
+          have hc : cantor (s + 1) 0 = cantor 0 s + 1 := by
+            show tri ((s + 1) + 0) + 0 = tri (0 + s) + s + 1
+            rw [Nat.add_zero, Nat.zero_add, tri]
+            omega
+          rw [hc, pairDecode, ih s 0 (by omega)]
+      | succ m ihm =>
+          intro n h
+          have hidx : n + (m + 1) = (n + 1) + m := by omega
+          have hc : cantor n (m + 1) = cantor (n + 1) m + 1 := by
+            show tri (n + (m + 1)) + (m + 1) = tri ((n + 1) + m) + m + 1
+            rw [hidx]
+            omega
+          rw [hc, pairDecode, ihm (n + 1) (by omega)]
+
+theorem cantor_injective {n m n' m' : Nat} (h : cantor n m = cantor n' m') :
+    n = n' ∧ m = m' := by
+  have h1 : pairDecode (cantor n m) = (n, m) := pairDecode_cantor (n + m) m n rfl
+  have h2 : pairDecode (cantor n' m') = (n', m') := pairDecode_cantor (n' + m') m' n' rfl
+  rw [h, h2] at h1
+  injection h1 with e1 e2
+  exact ⟨e1.symm, e2.symm⟩
+
+/-- `e_k`, the finite set coded by the bits of k — the §3.6 basis, as a predicate. -/
+def eSet (k : Nat) : Nat → Prop := fun n => k.testBit n = true
+
+/-- Application: A · B. -/
+def powApp (A B : Nat → Prop) : Nat → Prop :=
+  fun m => ∃ k, A (cantor k m) ∧ ∀ n, eSet k n → B n
+
+/-- Graph: the code of a function as a set. -/
+def powGraph (f : (Nat → Prop) → (Nat → Prop)) : Nat → Prop :=
+  fun j => ∃ k m, j = cantor k m ∧ f (eSet k) m
+
+/-- Continuity in the form §3.6's topology already uses: monotone, and every
+    element of an output is already produced by a finite part of the input. -/
+structure PowContinuous (f : (Nat → Prop) → (Nat → Prop)) : Prop where
+  mono   : ∀ A B, (∀ n, A n → B n) → ∀ m, f A m → f B m
+  finite : ∀ B m, f B m → ∃ k, (∀ n, eSet k n → B n) ∧ f (eSet k) m
+
+/-- **Fun ∘ Graph = id**: the retraction, and with it §5.3's claim that
+    [Pω → Pω] is a retract of Pω. -/
+theorem powApp_powGraph (f : (Nat → Prop) → (Nat → Prop)) (hf : PowContinuous f)
+    (B : Nat → Prop) (m : Nat) : powApp (powGraph f) B m ↔ f B m := by
+  constructor
+  · rintro ⟨k, ⟨k', m', heq, hfk⟩, hsub⟩
+    obtain ⟨hk, hm⟩ := cantor_injective heq
+    subst hk
+    subst hm
+    exact hf.mono _ B hsub m hfk
+  · intro h
+    obtain ⟨k, hsub, hfk⟩ := hf.finite B m h
+    exact ⟨k, ⟨k, m, rfl, hfk⟩, hsub⟩
+
+/-- Every `Fun A` is itself continuous, so `Fun` really lands in [Pω → Pω]. -/
+theorem powApp_continuous (A : Nat → Prop) : PowContinuous (powApp A) where
+  mono := by
+    rintro B C hBC m ⟨k, hA, hsub⟩
+    exact ⟨k, hA, fun n hn => hBC n (hsub n hn)⟩
+  finite := by
+    rintro B m ⟨k, hA, hsub⟩
+    exact ⟨k, hsub, ⟨k, hA, fun _ hn => hn⟩⟩
+
+/-- Self-application is interpretable: this is what a λ-model needs and what the
+    retraction buys, with no inverse limit anywhere. -/
+def powSelfApp (A : Nat → Prop) : Nat → Prop := powApp A A
+
+-- Axiom audit. The whole λ-model layer is constructive: no `lem`, and the two
+-- remaining axioms come from `omega`'s arithmetic reasoning inside the pairing.
+#print axioms pairDecode_cantor  -- [propext, Quot.sound]
+#print axioms cantor_injective   -- [propext, Quot.sound]
+#print axioms powApp_powGraph    -- [propext, Quot.sound]
+#print axioms powApp_continuous  -- does not depend on any axioms
+
+
+/- ----------------------------------------------------------------
    §5.4 — term and tree domains T^∞(Σ)
 
    The finite Σ-terms with Ω for "undefined", ordered by "less defined
@@ -2920,129 +3077,6 @@ theorem liftTok_mono (n : Nat) :
 #print axioms emb_mono     -- [propext, Quot.sound]
 #print axioms liftTok_mono -- [propext, Quot.sound]
 #print axioms towerDomain  -- [lem, propext, Quot.sound]
-
-
-/- ----------------------------------------------------------------
-   §5.3 — Pω as a λ-model: [Pω → Pω] is a retract of Pω
-
-   The *domain* is §3.6: Pω is 𝒫(ℕ), already a Scott domain as
-   `psetNat`. What this entry adds is the λ-model structure — Scott's
-   1976 "Data Types as Lattices" construction:
-
-       A · B  =  { m | ∃ k, ⟨k,m⟩ ∈ A and e_k ⊆ B }
-       Graph f = { ⟨k,m⟩ | m ∈ f(e_k) }
-       Fun (Graph f) = f     for continuous f
-
-   with `e_k` the finite set coded by k's bits, already available as
-   the §3.6 basis. Because the function space embeds into the domain
-   itself, self-application `A · A` is interpretable and Pω models the
-   untyped λ-calculus **with no inverse limit** — which is why §5.5 is
-   not needed for a model, only for Scott's original one.
-
-   One ingredient is missing and is supplied first. `pairDecode` is a
-   surjection ℕ ↠ ℕ×ℕ, which was enough for enumerating a basis, but a
-   *coding* needs a section: `Fun (Graph f) = f` reads back k and m
-   from ⟨k,m⟩ and so needs **injectivity**. `cantor` is that section,
-   defined through triangular numbers so that no division appears, and
-   `pairDecode_cantor` proves it inverse to the walk on the nose.
-   ---------------------------------------------------------------- -/
-
-def tri : Nat → Nat
-  | 0     => 0
-  | n + 1 => tri n + (n + 1)
-
-/-- The Cantor pairing, as a section of `pairDecode`. -/
-def cantor (n m : Nat) : Nat := tri (n + m) + m
-
-theorem pairDecode_cantor : ∀ s m n, n + m = s → pairDecode (cantor n m) = (n, m) := by
-  intro s
-  induction s with
-  | zero =>
-      intro m n h
-      have hn : n = 0 := by omega
-      have hm : m = 0 := by omega
-      subst hn
-      subst hm
-      rfl
-  | succ s ih =>
-      intro m
-      induction m with
-      | zero =>
-          intro n h
-          have hn : n = s + 1 := by omega
-          subst hn
-          have hc : cantor (s + 1) 0 = cantor 0 s + 1 := by
-            show tri ((s + 1) + 0) + 0 = tri (0 + s) + s + 1
-            rw [Nat.add_zero, Nat.zero_add, tri]
-            omega
-          rw [hc, pairDecode, ih s 0 (by omega)]
-      | succ m ihm =>
-          intro n h
-          have hidx : n + (m + 1) = (n + 1) + m := by omega
-          have hc : cantor n (m + 1) = cantor (n + 1) m + 1 := by
-            show tri (n + (m + 1)) + (m + 1) = tri ((n + 1) + m) + m + 1
-            rw [hidx]
-            omega
-          rw [hc, pairDecode, ihm (n + 1) (by omega)]
-
-theorem cantor_injective {n m n' m' : Nat} (h : cantor n m = cantor n' m') :
-    n = n' ∧ m = m' := by
-  have h1 : pairDecode (cantor n m) = (n, m) := pairDecode_cantor (n + m) m n rfl
-  have h2 : pairDecode (cantor n' m') = (n', m') := pairDecode_cantor (n' + m') m' n' rfl
-  rw [h, h2] at h1
-  injection h1 with e1 e2
-  exact ⟨e1.symm, e2.symm⟩
-
-/-- `e_k`, the finite set coded by the bits of k — the §3.6 basis, as a predicate. -/
-def eSet (k : Nat) : Nat → Prop := fun n => k.testBit n = true
-
-/-- Application: A · B. -/
-def powApp (A B : Nat → Prop) : Nat → Prop :=
-  fun m => ∃ k, A (cantor k m) ∧ ∀ n, eSet k n → B n
-
-/-- Graph: the code of a function as a set. -/
-def powGraph (f : (Nat → Prop) → (Nat → Prop)) : Nat → Prop :=
-  fun j => ∃ k m, j = cantor k m ∧ f (eSet k) m
-
-/-- Continuity in the form §3.6's topology already uses: monotone, and every
-    element of an output is already produced by a finite part of the input. -/
-structure PowContinuous (f : (Nat → Prop) → (Nat → Prop)) : Prop where
-  mono   : ∀ A B, (∀ n, A n → B n) → ∀ m, f A m → f B m
-  finite : ∀ B m, f B m → ∃ k, (∀ n, eSet k n → B n) ∧ f (eSet k) m
-
-/-- **Fun ∘ Graph = id**: the retraction, and with it §5.3's claim that
-    [Pω → Pω] is a retract of Pω. -/
-theorem powApp_powGraph (f : (Nat → Prop) → (Nat → Prop)) (hf : PowContinuous f)
-    (B : Nat → Prop) (m : Nat) : powApp (powGraph f) B m ↔ f B m := by
-  constructor
-  · rintro ⟨k, ⟨k', m', heq, hfk⟩, hsub⟩
-    obtain ⟨hk, hm⟩ := cantor_injective heq
-    subst hk
-    subst hm
-    exact hf.mono _ B hsub m hfk
-  · intro h
-    obtain ⟨k, hsub, hfk⟩ := hf.finite B m h
-    exact ⟨k, ⟨k, m, rfl, hfk⟩, hsub⟩
-
-/-- Every `Fun A` is itself continuous, so `Fun` really lands in [Pω → Pω]. -/
-theorem powApp_continuous (A : Nat → Prop) : PowContinuous (powApp A) where
-  mono := by
-    rintro B C hBC m ⟨k, hA, hsub⟩
-    exact ⟨k, hA, fun n hn => hBC n (hsub n hn)⟩
-  finite := by
-    rintro B m ⟨k, hA, hsub⟩
-    exact ⟨k, hsub, ⟨k, hA, fun _ hn => hn⟩⟩
-
-/-- Self-application is interpretable: this is what a λ-model needs and what the
-    retraction buys, with no inverse limit anywhere. -/
-def powSelfApp (A : Nat → Prop) : Nat → Prop := powApp A A
-
--- Axiom audit. The whole λ-model layer is constructive: no `lem`, and the two
--- remaining axioms come from `omega`'s arithmetic reasoning inside the pairing.
-#print axioms pairDecode_cantor  -- [propext, Quot.sound]
-#print axioms cantor_injective   -- [propext, Quot.sound]
-#print axioms powApp_powGraph    -- [propext, Quot.sound]
-#print axioms powApp_continuous  -- does not depend on any axioms
 
 
 /- ----------------------------------------------------------------
@@ -3518,6 +3552,101 @@ def dInfinity : DInfinityFoundations (TokenIdeal dInfTokens) := idealDomain dInf
 
 
 /- ----------------------------------------------------------------
+   §6.1 — bounded completeness fails: two minimal upper bounds
+
+   The first **non**-example. Everything before this inhabited
+   `DInfinityFoundations`; here the content is a refutation, and the
+   two results below are the two faces of the same failure:
+
+   - order-theoretic: {a, b} has upper bounds c and d and no least
+     one, so the poset is not bounded complete;
+   - topological: ↑a ∩ ↑b = {c, d} is not ↑k for any k, so the
+     compact-open base is not closed under intersection and `basisCap`
+     (D3) cannot be discharged.
+
+   §4 predicted exactly this — `basisCap` is the topological form of
+   bounded completeness — and §3.5's `fbcDomain` consumes the
+   hypothesis at exactly that field. This poset satisfies every other
+   `FinBCPoset` field; `bounded_lub` is the one it fails.
+
+   Note on the count: the catalogue says "six elements", but the
+   structure it describes — ⊥, a, b, c, d — has five, and its own
+   claim ↑a ∩ ↑b = {c, d} is the five-element reading. Formalized as
+   five.
+   ---------------------------------------------------------------- -/
+
+inductive Six where
+  | bot | a | b | c | d
+  deriving DecidableEq
+
+/-- ⊥ ⊑ a, b ⊑ c, d, with a ∦ b and c ∦ d. -/
+def sixLe : Six → Six → Bool
+  | .bot, _  => true
+  | .a,   .a => true
+  | .a,   .c => true
+  | .a,   .d => true
+  | .b,   .b => true
+  | .b,   .c => true
+  | .b,   .d => true
+  | .c,   .c => true
+  | .d,   .d => true
+  | _,    _  => false
+
+def sixUp (x : Six) : Six → Prop := fun z => sixLe x z = true
+
+/-- Bounded completeness fails: a and b are bounded, with no least upper bound. -/
+theorem six_no_lub :
+    ¬ ∃ u, sixLe .a u = true ∧ sixLe .b u = true ∧
+        ∀ v, sixLe .a v = true → sixLe .b v = true → sixLe u v = true := by
+  rintro ⟨u, hau, hbu, hlub⟩
+  cases u with
+  | bot => exact Bool.noConfusion hau
+  | a   => exact Bool.noConfusion hbu
+  | b   => exact Bool.noConfusion hau
+  | c   => exact Bool.noConfusion (hlub .d rfl rfl)
+  | d   => exact Bool.noConfusion (hlub .c rfl rfl)
+
+/-- The pair *is* bounded — c and d are both upper bounds. What fails is leastness. -/
+theorem six_bounded : sixLe .a .c = true ∧ sixLe .b .c = true := ⟨rfl, rfl⟩
+
+/-- D3 fails topologically: ↑a ∩ ↑b is not a principal up-set. -/
+theorem six_basisCap_fails :
+    ¬ ∃ k, ∀ z, (sixUp .a z ∧ sixUp .b z) ↔ sixUp k z := by
+  rintro ⟨k, hk⟩
+  have hc : sixUp k .c := (hk .c).mp ⟨rfl, rfl⟩
+  have hd : sixUp k .d := (hk .d).mp ⟨rfl, rfl⟩
+  cases k with
+  | bot => exact Bool.noConfusion ((hk .a).mpr rfl).2
+  | a   => exact Bool.noConfusion ((hk .a).mpr rfl).2
+  | b   => exact Bool.noConfusion ((hk .b).mpr rfl).1
+  | c   => exact Bool.noConfusion hd
+  | d   => exact Bool.noConfusion hc
+
+
+/- ----------------------------------------------------------------
+   §6.2 — directed completeness fails: ℕ under ≤
+
+   ℕ is directed — any two naturals have an upper bound — and has no
+   upper bound at all, so it is not a dcpo. Adjoining ∞ repairs it and
+   gives §3.4's `vertNat`, which is the point of the pair: "cpo" is a
+   completeness requirement, not a size requirement.
+   ---------------------------------------------------------------- -/
+
+theorem nat_directed (n m : Nat) : ∃ k, n ≤ k ∧ m ≤ k := ⟨n + m, by omega, by omega⟩
+
+theorem nat_not_dcpo : ¬ ∃ m : Nat, ∀ n : Nat, n ≤ m := by
+  rintro ⟨m, hm⟩
+  exact absurd (hm (m + 1)) (by omega)
+
+-- Axiom audit for the two non-examples. Both are refutations of finite or
+-- arithmetic facts, so neither needs `lem`: §6.1 decides by case analysis on a
+-- five-constructor type, §6.2 by `omega`.
+#print axioms six_no_lub          -- [propext]
+#print axioms six_basisCap_fails  -- [propext]
+#print axioms nat_not_dcpo        -- [propext, Quot.sound]
+
+
+/- ----------------------------------------------------------------
    §6.5 — powerdomains
 
    The section makes two claims, and they are not of the same kind.
@@ -3667,110 +3796,3 @@ theorem egliMilner_le_hoare (P : TokenPoset) (A B : List P.T)
 #print axioms hoarePowerdomain   -- [lem, propext, Quot.sound]
 
 
-/- ----------------------------------------------------------------
-   §5.2 — parallel-or
-
-   por(tt, x) = tt, por(x, tt) = tt, por(ff, ff) = ff, on 𝔹⊥ from §3.3.
-   The catalogue makes two claims about it, and again they are not the
-   same kind of claim.
-
-   **It is monotone, hence continuous, hence an element of the function
-   domain** — proved here, in both arguments. On a flat domain monotone
-   *is* continuous: a directed subset of 𝔹⊥ is a chain with a greatest
-   element, so preservation of directed suprema is monotonicity.
-
-   **It is not definable in PCF (Plotkin 1977)** — not proved here, and
-   not provable in this vocabulary: definability is a statement about a
-   *syntax* and its operational semantics, so it needs a PCF term
-   language and an adequacy theorem, neither of which the D1–D4 setting
-   carries.
-
-   What *is* provable here is the semantic hallmark that separates por
-   from every sequential function: it has **no sequentiality index**.
-   A function of two flat arguments is sequential when some argument
-   position is strict — evaluating it must begin somewhere — and
-   `por_not_seq` shows por is strict in neither, while `lor_seq` shows
-   the notion is not vacuous. That is exactly what "parallel" names.
-   ---------------------------------------------------------------- -/
-
-def por : Option Bool → Option Bool → Option Bool
-  | some true,  _          => some true
-  | _,          some true  => some true
-  | some false, some false => some false
-  | _,          _          => none
-
-theorem por_tt_left (x : Option Bool) : por (some true) x = some true := rfl
-
-theorem por_tt_right (x : Option Bool) : por x (some true) = some true := by
-  cases x with
-  | none   => rfl
-  | some b => cases b with
-    | true  => rfl
-    | false => rfl
-
-theorem por_ff : por (some false) (some false) = some false := rfl
-
-/-- The flat order on 𝔹⊥: ⊥ below everything, data incomparable. -/
-def flatLe (x y : Option Bool) : Prop := x = none ∨ x = y
-
-theorem por_mono_left : ∀ x x' y, flatLe x x' → flatLe (por x y) (por x' y) := by
-  intro x x' y h
-  rcases h with h | h
-  · subst h
-    cases y with
-    | none   => exact Or.inl rfl
-    | some b => cases b with
-      | true  => exact Or.inr (by rw [por_tt_right, por_tt_right])
-      | false => exact Or.inl rfl
-  · subst h
-    exact Or.inr rfl
-
-theorem por_mono_right : ∀ x y y', flatLe y y' → flatLe (por x y) (por x y') := by
-  intro x y y' h
-  rcases h with h | h
-  · subst h
-    cases x with
-    | none   => exact Or.inl rfl
-    | some b => cases b with
-      | true  => exact Or.inr (by rw [por_tt_left, por_tt_left])
-      | false => exact Or.inl rfl
-  · subst h
-    exact Or.inr rfl
-
-/-- A function of two flat arguments is sequential when some argument position is
-    strict: evaluation has to begin somewhere. -/
-def StrictFirst (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ y, f none y = none
-
-def StrictSecond (f : Option Bool → Option Bool → Option Bool) : Prop := ∀ x, f x none = none
-
-def HasSeqIndex (f : Option Bool → Option Bool → Option Bool) : Prop :=
-  StrictFirst f ∨ StrictSecond f
-
-/-- **por has no sequentiality index** — it is strict in neither argument. This is
-    the semantic content of "parallel". -/
-theorem por_not_seq : ¬ HasSeqIndex por := by
-  rintro (h | h)
-  · have h2 : (some true : Option Bool) = none := h (some true)
-    cases h2
-  · have h2 : (some true : Option Bool) = none := h (some true)
-    cases h2
-
-/-- Sequential (left-strict) or, to show the notion is not vacuous. -/
-def lor : Option Bool → Option Bool → Option Bool
-  | none,       _ => none
-  | some true,  _ => some true
-  | some false, y => y
-
-theorem lor_seq : HasSeqIndex lor := Or.inl (fun _ => rfl)
-
-/-- por and sequential or agree wherever both are defined on total data, so the
-    difference is exactly the behaviour at ⊥. -/
-theorem por_lor_agree (b c : Bool) : por (some b) (some c) = lor (some b) (some c) := by
-  cases b <;> cases c <;> rfl
-
--- Axiom audit. The whole entry is `lem`-free; `propext` enters only through
--- `rintro`'s case analysis.
-#print axioms por_mono_left   -- [propext]
-#print axioms por_mono_right  -- [propext]
-#print axioms por_not_seq     -- [propext]
-#print axioms lor_seq         -- does not depend on any axioms
